@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { getMoods, getProgress } from '../services/api';
 import { FiLogOut, FiSun, FiMoon, FiEdit2, FiUser, FiBell, FiLock, FiChevronRight } from 'react-icons/fi';
+import { BiBrain } from 'react-icons/bi';
 import { toast } from 'react-toastify';
 
 // ─── DARK MODE ────────────────────────────────────────────────────────────
@@ -185,62 +186,28 @@ function MatureAvatar({ gender, skin, hair, hairStyle, outfit, mood }) {
   );
 }
 
-// ─── NEURAL NETWORK BANNER ───────────────────────────────────────────────
+// ─── NEURAL AVATAR DOTS ───────────────────────────────────────────────
 const NODES = [
   {x:8,y:20},{x:25,y:55},{x:15,y:80},{x:42,y:12},{x:55,y:38},
   {x:72,y:15},{x:88,y:45},{x:80,y:75},{x:60,y:68},{x:35,y:70},
 ];
 const LINKS = [[0,3],[3,5],[5,1],[1,4],[4,6],[6,7],[7,8],[8,9],[9,2],[2,0],[3,4],[4,5],[8,4],[1,9]];
 
-function NeuralBanner({ mood, name, stats, dark, onDark }) {
-  const moodColors = { happy:'#4ADE80', neutral:'#818CF8', sad:'#60A5FA', stressed:'#FBBF24', angry:'#F87171' };
-  const mc = moodColors[mood] || '#A78BFA';
-
+// ─── SIMPLE BANNER ───────────────────────────────────────────────
+function SimpleBanner({ dark, onDark }) {
   return (
-    <div style={{ position: 'relative', overflow: 'hidden', borderBottomLeftRadius: '32px', borderBottomRightRadius: '32px', background: 'linear-gradient(135deg, #8B5CF6 0%, #D946EF 50%, #EC4899 100%)', minHeight: '260px', paddingBottom: '30px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-      {/* SVG Neural Network BG */}
-      <svg style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', opacity: 0.15 }} viewBox="0 0 100 100" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
-        {LINKS.map(([a, b], i) => (
-          <line key={i} x1={NODES[a].x} y1={NODES[a].y} x2={NODES[b].x} y2={NODES[b].y} stroke="white" strokeWidth="0.6"/>
-        ))}
-        {NODES.map((n, i) => (
-          <circle key={i} cx={n.x} cy={n.y} r={i % 3 === 0 ? 3 : 1.8} fill="white"/>
-        ))}
-      </svg>
+    <div className="gradient-header" style={{ position: 'relative' }}>
+      <button onClick={onDark} style={{
+        position: 'absolute', top: '24px', right: '24px',
+        background: 'rgba(255,255,255,0.2)', backdropFilter: 'blur(10px)', 
+        border: 'none', borderRadius: '50%', width: '38px', height: '38px', 
+        cursor: 'pointer', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center'
+      }}>
+        {dark ? <FiSun size={18}/> : <FiMoon size={18}/>}
+      </button>
 
-      {/* Top row: dark toggle */}
-      <div style={{ width: '100%', display: 'flex', justifyContent: 'flex-end', padding: '16px 18px 0', position: 'relative', zIndex: 2 }}>
-        <button onClick={onDark} style={{ background: 'rgba(255,255,255,0.15)', backdropFilter: 'blur(10px)', border: 'none', borderRadius: '50%', width: '38px', height: '38px', cursor: 'pointer', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          {dark ? <FiSun size={16}/> : <FiMoon size={16}/>}
-        </button>
-      </div>
-
-      {/* Main Content */}
-      <div style={{ textAlign: 'center', position: 'relative', zIndex: 2, width: '100%', padding: '0 20px', marginTop: '10px' }}>
-        
-        {/* Name */}
-        <h2 style={{ color: 'white', fontWeight: 900, fontSize: '2.2rem', letterSpacing: '-0.02em', textShadow: '0 2px 10px rgba(0,0,0,0.1)' }}>
-          {name || 'User'}
-        </h2>
-
-        {/* Mood pill */}
-        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', background: 'rgba(255,255,255,0.15)', backdropFilter: 'blur(12px)', borderRadius: '30px', padding: '8px 24px', marginTop: '16px', border: '1px solid rgba(255,255,255,0.4)', boxShadow: '0 4px 15px rgba(0,0,0,0.1)' }}>
-          <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: mc, boxShadow: `0 0 8px ${mc}` }}></div>
-          <span style={{ color: 'white', fontWeight: 800, fontSize: '1.05rem', textTransform: 'capitalize' }}>Feeling {mood}</span>
-        </div>
-      </div>
-
-      {/* Mini stats grid */}
-      {stats && (
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px', padding: '0 20px', width: '100%', marginTop: '30px', position: 'relative', zIndex: 2 }}>
-          {[{label:'🔥 Streak', val: stats.streak||0},{label:'🎮 Games', val:stats.gamesPlayed||0},{label:'✅ Tasks', val:stats.completedTasks||0}].map(s => (
-            <div key={s.label} style={{ background: 'rgba(255,255,255,0.12)', backdropFilter: 'blur(16px)', borderRadius: '16px', padding: '16px 8px', textAlign: 'center', border: '1px solid rgba(255,255,255,0.2)', boxShadow: '0 8px 32px rgba(0,0,0,0.15)' }}>
-              <div style={{ color: 'white', fontWeight: 900, fontSize: '1.8rem', lineHeight: 1 }}>{s.val}</div>
-              <div style={{ color: 'rgba(255,255,255,0.9)', fontSize: '0.8rem', fontWeight: 700, marginTop: '8px' }}>{s.label}</div>
-            </div>
-          ))}
-        </div>
-      )}
+      <h1><FiUser /> Profile</h1>
+      <p>Manage your account</p>
     </div>
   );
 }
@@ -258,6 +225,7 @@ export default function Profile() {
   const [hair,      setHair]      = useState(() => localStorage.getItem('nn-hair')      || HAIR_COLORS[0]);
   const [hairStyle, setHairStyle] = useState(() => localStorage.getItem('nn-hairStyle') || 'straight');
   const [outfit,    setOutfit]    = useState(() => localStorage.getItem('nn-outfit')    || OUTFIT_COLS[0]);
+  const [avatarBg,  setAvatarBg]  = useState(() => localStorage.getItem('nn-avatarBg')  || 'linear-gradient(145deg,#6B21A8,#9333EA,#EC4899)');
 
   const [displayName, setDisplayName] = useState(() => localStorage.getItem('nn-displayName') || user?.name || '');
   const [notif, setNotif] = useState(true);
@@ -281,12 +249,8 @@ export default function Profile() {
   return (
     <div style={{ paddingBottom: '90px', minHeight: '100vh', background: 'var(--bg-primary)' }}>
 
-      {/* ── Neural Banner ── */}
-      <NeuralBanner
-        mood={latestMood}
-        name={displayName || user?.name || 'User'}
-        email={user?.email}
-        stats={progress}
+      {/* ── Banner ── */}
+      <SimpleBanner
         dark={dark}
         onDark={() => setDark(!dark)}
       />
@@ -321,7 +285,7 @@ export default function Profile() {
 
           {/* Avatar Preview */}
           <div style={{
-            background: 'linear-gradient(145deg,#6B21A8,#9333EA,#EC4899)',
+            background: avatarBg,
             borderRadius: '28px', padding: '24px 20px 16px',
             marginBottom: '18px', position: 'relative', overflow: 'hidden',
             boxShadow: '0 16px 48px rgba(139,92,246,0.45)', minHeight: '300px'
@@ -388,6 +352,23 @@ export default function Profile() {
             <div style={{ display:'flex', gap:'10px', flexWrap:'wrap' }}>
               {OUTFIT_COLS.map(c => (
                 <div key={c} onClick={() => save('nn-outfit',c,setOutfit)} style={{ width:'38px', height:'38px', borderRadius:'10px', background:c, cursor:'pointer', border:`3px solid ${outfit===c?'#1F2937':'transparent'}`, boxShadow: outfit===c?'0 0 0 2px white,0 0 0 4px #1F2937':'none', transition:'all 0.2s' }}/>
+              ))}
+            </div>
+          </div>
+
+          {/* Background */}
+          <div style={{ background:'var(--bg-secondary)', borderRadius:'20px', padding:'18px', marginBottom:'12px', border:'1px solid var(--border)', boxShadow:'0 2px 12px rgba(0,0,0,0.05)' }}>
+            <p style={{ fontWeight:700, fontSize:'0.88rem', color:'var(--text-primary)', marginBottom:'14px' }}>🖼️ Background</p>
+            <div style={{ display:'flex', gap:'10px', flexWrap:'wrap' }}>
+              {[
+                'linear-gradient(145deg,#6B21A8,#9333EA,#EC4899)',
+                'linear-gradient(145deg,#059669,#10B981,#34D399)',
+                'linear-gradient(145deg,#2563EB,#3B82F6,#60A5FA)',
+                'linear-gradient(145deg,#E11D48,#F43F5E,#FB7185)',
+                'linear-gradient(145deg,#D97706,#F59E0B,#FCD34D)',
+                'linear-gradient(145deg,#475569,#64748B,#94A3B8)'
+              ].map((c, i) => (
+                <div key={i} onClick={() => save('nn-avatarBg',c,setAvatarBg)} style={{ width:'38px', height:'38px', borderRadius:'10px', background:c, cursor:'pointer', border:`3px solid ${avatarBg===c?'#1F2937':'transparent'}`, boxShadow: avatarBg===c?'0 0 0 2px white,0 0 0 4px #1F2937':'none', transition:'all 0.2s' }}/>
               ))}
             </div>
           </div>
@@ -477,6 +458,21 @@ export default function Profile() {
           </div>
         </div>
       )}
+
+      {/* ── NeuroNexus Branding ── */}
+      <div style={{ padding: '24px', textAlign: 'center', marginTop: '10px' }}>
+        <div style={{
+          width: '64px', height: '64px', background: 'linear-gradient(135deg, #B246D2, #F037A5)',
+          borderRadius: '16px', margin: '0 auto 12px', display: 'flex', alignItems: 'center', justifyContent: 'center',
+          boxShadow: '0 8px 16px rgba(178,70,210,0.3)', color: 'white'
+        }}>
+          <BiBrain size={36} />
+        </div>
+        <h3 style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '4px' }}>NeuroNexus</h3>
+        <p style={{ color: '#B246D2', fontWeight: 600, fontSize: '0.9rem', marginBottom: '8px' }}>Version 1.0.0</p>
+        <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>Your ADHD-friendly productivity companion</p>
+      </div>
+
     </div>
   );
 }

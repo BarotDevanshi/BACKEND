@@ -312,6 +312,7 @@ function StressPop({ onComplete }) {
 // ─── MAIN GAMES SCREEN ─────────────────────────────────────────────────────
 export default function Games() {
   const [reward, setReward] = useState(null);
+  const [activeGame, setActiveGame] = useState(null);
 
   const handleGameComplete = async (gameName) => {
     toast.success(`${gameName} complete! 🎉`);
@@ -323,6 +324,29 @@ export default function Games() {
     }
   };
 
+  const GAME_LIST = [
+    { id: 'breathing', title: 'Breathing Exercise', sub: 'Calm your mind with guided breathing', icon: '🌬️', color: '#60A5FA' },
+    { id: 'pop', title: 'Tap to Relax', sub: 'Simple tapping for instant calm', icon: '🫧', color: '#F472B6' },
+    { id: 'memory', title: 'Focus Game', sub: 'Train your attention gently', icon: '⚡', color: '#6EE7B7' }
+  ];
+
+  if (activeGame) {
+    return (
+      <div style={{ paddingBottom: '80px', padding: '16px' }}>
+        <RewardModal result={reward} onClose={() => setReward(null)} />
+        <button 
+          onClick={() => setActiveGame(null)} 
+          style={{ background: 'var(--bg-secondary)', color: 'var(--text-primary)', border: '1px solid var(--border)', padding: '8px 16px', borderRadius: '12px', fontWeight: 700, cursor: 'pointer', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}
+        >
+          ← Back to Games
+        </button>
+        {activeGame === 'breathing' && <BreathingGame onComplete={() => handleGameComplete('Breathing Exercise')} />}
+        {activeGame === 'pop' && <StressPop onComplete={() => handleGameComplete('Tap to Relax')} />}
+        {activeGame === 'memory' && <MemoryMatch onComplete={() => handleGameComplete('Focus Game')} />}
+      </div>
+    );
+  }
+
   return (
     <div style={{ paddingBottom: '80px' }}>
       <RewardModal result={reward} onClose={() => setReward(null)} />
@@ -332,17 +356,42 @@ export default function Games() {
         <p>Relax, focus &amp; recharge 🧠</p>
       </div>
 
-      <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+      <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
         {/* Badges strip */}
-        <div className="card" style={{ padding: '16px', display: 'flex', gap: '10px', alignItems: 'center' }}>
+        <div className="card" style={{ padding: '16px', display: 'flex', gap: '10px', alignItems: 'center', marginBottom: '8px' }}>
           <FiAward size={20} color="#F59E0B" />
-          <span style={{ fontWeight: 600, color: '#374151' }}>Play 3 games to earn a badge &amp; +1 streak!</span>
+          <span style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: '0.9rem' }}>Play 3 games to earn a badge &amp; +1 streak!</span>
           <FiZap size={16} color="#F97316" style={{ marginLeft: 'auto' }} />
         </div>
 
-        <BreathingGame onComplete={() => handleGameComplete('Breathing Exercise')} />
-        <MemoryMatch onComplete={() => handleGameComplete('Memory Match')} />
-        <StressPop onComplete={() => handleGameComplete('Stress Pop')} />
+        {GAME_LIST.map(game => (
+          <div 
+            key={game.id} 
+            className="card"
+            onClick={() => setActiveGame(game.id)}
+            style={{ 
+              display: 'flex', alignItems: 'center', gap: '16px', padding: '16px', 
+              cursor: 'pointer', transition: 'transform 0.2s', margin: 0
+            }}
+            onMouseOver={(e) => e.currentTarget.style.transform = 'translateY(-2px)'}
+            onMouseOut={(e) => e.currentTarget.style.transform = 'translateY(0)'}
+          >
+            {/* Icon Block */}
+            <div style={{ 
+              width: '60px', height: '60px', borderRadius: '16px', 
+              background: game.color, display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: '1.8rem', color: 'white', flexShrink: 0, opacity: 0.95
+            }}>
+              {game.icon}
+            </div>
+            
+            {/* Text Block */}
+            <div style={{ flex: 1 }}>
+              <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '4px' }}>{game.title}</h3>
+              <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>{game.sub}</p>
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   );

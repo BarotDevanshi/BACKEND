@@ -15,7 +15,10 @@ export function AuthProvider({ children }) {
       // Decode JWT to get user info
       try {
         const payload = JSON.parse(atob(token.split('.')[1]));
-        setUser({ id: payload.id });
+        setUser({ id: payload.id, name: payload.name, email: payload.email });
+        if (payload.name && !localStorage.getItem('nn-displayName')) {
+          localStorage.setItem('nn-displayName', payload.name);
+        }
       } catch {
         logout();
       }

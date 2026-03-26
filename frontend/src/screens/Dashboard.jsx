@@ -72,11 +72,19 @@ export default function Dashboard() {
   });
   const maxHeap = Math.max(...heapData, 1);
 
-  // ── Mood Line Chart ──────────────────────────────────────────────────────
-  const recentMoods = moods.length > 0 ? [...moods].reverse().slice(-7) : [{ createdAt: new Date(), mood: 'neutral' }];
+  // ── Mood Line Chart (Time & Day Wise in Tooltip) ──────────────────────────
+  const recentMoods = moods.length > 0 ? [...moods].reverse().slice(-14) : [{ createdAt: new Date(), mood: 'neutral' }];
   const moodChartData = {
     labels: recentMoods.map(m => new Date(m.createdAt).toLocaleDateString('en', { weekday: 'short' })),
-    datasets: [{ label: 'Mood', data: recentMoods.map(m => MOOD_VALUES[m.mood] ?? 3), borderColor: '#B246D2', backgroundColor: 'rgba(178,70,210,0.12)', borderWidth: 2.5, fill: true, tension: 0.4, pointBackgroundColor: '#fff', pointBorderColor: '#B246D2', pointBorderWidth: 2, pointRadius: 5 }],
+    datasets: [{ 
+      label: 'Mood Level', 
+      data: recentMoods.map(m => MOOD_VALUES[m.mood] ?? 3), 
+      times: recentMoods.map(m => new Date(m.createdAt).toLocaleTimeString('en', { hour: '2-digit', minute:'2-digit' })),
+      borderColor: '#B246D2', 
+      backgroundColor: 'rgba(178,70,210,0.12)', 
+      borderWidth: 2.5, fill: true, tension: 0.3, 
+      pointBackgroundColor: '#B246D2', pointBorderColor: '#fff', pointBorderWidth: 2, pointRadius: 5 
+    }],
   };
 
   // ── Sleep Bar Chart ──────────────────────────────────────────────────────
@@ -92,7 +100,21 @@ export default function Dashboard() {
     datasets: [{ data: [completedTasks || 1, pendingTasks || 0], backgroundColor: ['#4ADE80', '#FB923C'], borderWidth: 0, cutout: '72%' }],
   };
 
-  const lineOpts = { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { grid: { color: '#F3F4F6', borderDash: [4, 4] }, ticks: { color: '#9CA3AF', font: { size: 11 } } }, y: { grid: { color: '#F3F4F6', borderDash: [4, 4] }, beginAtZero: true, max: 6, ticks: { stepSize: 2, color: '#9CA3AF', font: { size: 11 } } } } };
+  const lineOpts = { 
+    responsive: true, maintainAspectRatio: false, 
+    plugins: { 
+      legend: { display: false },
+      tooltip: {
+        callbacks: {
+          title: (ctx) => `${ctx[0].label} ${ctx[0].dataset.times[ctx[0].dataIndex]}`
+        }
+      }
+    }, 
+    scales: { 
+      x: { grid: { color: '#F3F4F6', borderDash: [4, 4] }, ticks: { color: '#9CA3AF', font: { size: 11 } } }, 
+      y: { grid: { color: '#F3F4F6', borderDash: [4, 4] }, beginAtZero: true, max: 6, ticks: { stepSize: 2, color: '#9CA3AF', font: { size: 11 } } } 
+    } 
+  };
   const barOpts = { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { grid: { display: false }, ticks: { color: '#9CA3AF', font: { size: 11 } } }, y: { grid: { color: '#F3F4F6', borderDash: [4, 4] }, beginAtZero: true, max: 12, ticks: { stepSize: 3, color: '#9CA3AF', font: { size: 11 } } } } };
   const donutOpts = { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } };
 
@@ -212,175 +234,7 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* ── 7-Day Trends ── */}
-      {(() => {
-        const days = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
 
-        // Map sleep records to day-of-week scores (0–100)
-        const sleepByDay = Array(7).fill(null);
-        sleepData.slice(0,14).forEach(s => {
-          const d = new Date(s.createdAt || s.sleepTime);
-          const idx = (d.getDay() + 6) % 7; // 0=Mon
-          const hrs = s.duration || 0;
-          sleepByDay[idx] = Math.min(100, Math.round((hrs / 10) * 100));
-        });
-
-        // Map moods to stress / focus / energy per day
-        const stressByDay  = Array(7).fill(null);
-        const focusByDay   = Array(7).fill(null);
-        const energyByDay  = Array(7).fill(null);
-        const STRESS_MAP   = { happy:15, neutral:30, sad:55, stressed:80, angry:90 };
-        const FOCUS_MAP    = { happy:80, neutral:65, sad:40, stressed:35, angry:25 };
-        const ENERGY_MAP   = { happy:85, neutral:60, sad:35, stressed:40, angry:30 };
-
-        moods.slice(0,14).forEach(m => {
-          const d = new Date(m.createdAt);
-          const idx = (d.getDay() + 6) % 7;
-          stressByDay[idx] = STRESS_MAP[m.mood] ?? 40;
-          focusByDay[idx]  = FOCUS_MAP[m.mood]  ?? 60;
-          energyByDay[idx] = ENERGY_MAP[m.mood] ?? 60;
-        });
-
-        // Fill nulls with interpolated defaults so the chart always looks good
-        const fill = (arr, def) => arr.map((v,i) => v !== null ? v : def[i]);
-        const defStress = [30,45,55,60,55,50,35];
-        const defFocus  = [75,70,60,58,62,70,78];
-        const defEnergy = [65,60,55,50,58,68,75];
-        const defSleep  = [80,75,70,65,68,72,82];
-
-        const trendsData = {
-          labels: days,
-          datasets: [
-            {
-              label: 'Sleep Quality',
-              data: fill(sleepByDay, defSleep),
-              borderColor: '#3B82F6',
-              backgroundColor: 'rgba(59,130,246,0.08)',
-              borderWidth: 2.5, fill: true, tension: 0.45,
-              pointRadius: 4, pointBackgroundColor: '#3B82F6',
-              pointBorderColor: 'white', pointBorderWidth: 2,
-            },
-            {
-              label: 'Focus',
-              data: fill(focusByDay, defFocus),
-              borderColor: '#10B981',
-              backgroundColor: 'rgba(16,185,129,0.07)',
-              borderWidth: 2.5, fill: true, tension: 0.45,
-              pointRadius: 4, pointBackgroundColor: '#10B981',
-              pointBorderColor: 'white', pointBorderWidth: 2,
-            },
-            {
-              label: 'Stress Level',
-              data: fill(stressByDay, defStress),
-              borderColor: '#F97316',
-              backgroundColor: 'rgba(249,115,22,0.07)',
-              borderWidth: 2.5, fill: true, tension: 0.45,
-              pointRadius: 4, pointBackgroundColor: '#F97316',
-              pointBorderColor: 'white', pointBorderWidth: 2,
-            },
-            {
-              label: 'Energy',
-              data: fill(energyByDay, defEnergy),
-              borderColor: '#FBBF24',
-              backgroundColor: 'rgba(251,191,36,0.07)',
-              borderWidth: 2.5, fill: true, tension: 0.45,
-              pointRadius: 4, pointBackgroundColor: '#FBBF24',
-              pointBorderColor: 'white', pointBorderWidth: 2,
-            },
-          ],
-        };
-
-        const trendsOpts = {
-          responsive: true,
-          maintainAspectRatio: false,
-          interaction: { mode: 'index', intersect: false },
-          plugins: {
-            legend: {
-              display: true,
-              position: 'top',
-              align: 'end',
-              labels: {
-                usePointStyle: true, pointStyle: 'circle',
-                boxWidth: 8, boxHeight: 8, padding: 14,
-                font: { size: 11, weight: '600' }, color: '#6B7280',
-              },
-            },
-            tooltip: {
-              backgroundColor: 'rgba(255,255,255,0.96)',
-              borderColor: '#E5E7EB', borderWidth: 1,
-              titleColor: '#1F2937', titleFont: { weight: '700', size: 12 },
-              bodyColor: '#6B7280', bodyFont: { size: 12 },
-              padding: 12, cornerRadius: 12,
-              callbacks: {
-                label: ctx => ` ${ctx.dataset.label}: ${ctx.parsed.y}`,
-              },
-            },
-          },
-          scales: {
-            x: {
-              grid: { display: false },
-              ticks: { color: '#9CA3AF', font: { size: 11, weight: '600' } },
-            },
-            y: {
-              grid: { color: '#F3F4F6', borderDash: [4,4] },
-              beginAtZero: true, max: 100,
-              ticks: { stepSize: 25, color: '#9CA3AF', font: { size: 10 } },
-            },
-          },
-        };
-
-        return (
-          <div className="card" style={{ margin: '0 16px 20px', padding: '20px' }}>
-            <h3 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '16px', color: 'var(--text-primary)' }}>
-              📈 7-Day Trends
-            </h3>
-            <div style={{ height: '220px' }}>
-              <Line data={trendsData} options={trendsOpts} />
-            </div>
-          </div>
-        );
-      })()}
-
-
-      {/* ── Monthly Mood Heatmap Calendar ── */}
-      <div className="card" style={{ margin: '0 16px 20px', padding: '20px' }}>
-        <h3 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '4px' }}>Monthly Mood Heatmap</h3>
-        <p style={{ color: '#9CA3AF', fontSize: '0.78rem', marginBottom: '14px' }}>{monthName}</p>
-
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '4px', marginBottom: '8px' }}>
-          {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((d, i) => (
-            <div key={i} style={{ textAlign: 'center', fontSize: '0.7rem', fontWeight: 700, color: '#9CA3AF', paddingBottom: '4px' }}>{d}</div>
-          ))}
-        </div>
-
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '4px' }}>
-          {calendarCells.map((day, i) => {
-            if (!day) return <div key={i} style={{ aspectRatio: '1' }}></div>;
-            const mood = moodByDay[day];
-            const isToday = day === today.getDate();
-            return (
-              <div key={i} title={mood || 'No data'} style={{
-                aspectRatio: '1', borderRadius: '6px',
-                background: mood ? MOOD_COLORS[mood] : '#F3F4F6',
-                border: isToday ? '2px solid #B246D2' : '2px solid transparent',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: '0.7rem', fontWeight: 700,
-                color: mood ? 'white' : '#D1D5DB',
-                cursor: 'default'
-              }}>{day}</div>
-            );
-          })}
-        </div>
-
-        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '12px' }}>
-          {Object.entries(MOOD_COLORS).map(([m, c]) => (
-            <div key={m} style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-              <div style={{ width: '10px', height: '10px', borderRadius: '3px', background: c }}></div>
-              <span style={{ fontSize: '0.7rem', color: '#9CA3AF', textTransform: 'capitalize' }}>{m}</span>
-            </div>
-          ))}
-        </div>
-      </div>
     </div>
   );
 }
