@@ -37,14 +37,9 @@ const progressSchema = new mongoose.Schema({
         type: Date
     },
 
-    gamesPlayed: {
-        type: Number,
-        default: 0
+    lastOpenedDate: {
+        type: Date
     },
-
-    badges: [{
-        type: String
-    }]
 
 }, { timestamps: true });
 

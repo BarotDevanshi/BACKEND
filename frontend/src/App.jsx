@@ -40,7 +40,7 @@ function AppLayout() {
 
 export default function App() {
   return (
-    <BrowserRouter>
+    <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
       <ThemeProvider>
         <AuthProvider>
           <ToastContainer position="top-center" autoClose={3000} hideProgressBar={true} />

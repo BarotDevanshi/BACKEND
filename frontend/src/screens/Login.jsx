@@ -8,16 +8,26 @@ import { toast } from 'react-toastify';
 export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [emailError, setEmailError] = useState('');
+  const [passwordError, setPasswordError] = useState('');
   const { login } = useAuth();
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    try {
-      await login(email, password);
+    setEmailError('');
+    setPasswordError('');
+    const result = await login(email, password);
+    if (result.success) {
       navigate('/');
-    } catch (err) {
-      toast.error('Login failed. Please check your credentials.');
+    } else {
+      if (result.message === 'User not found') {
+        setEmailError(result.message);
+      } else if (result.message === 'Wrong password') {
+        setPasswordError(result.message);
+      } else {
+        toast.error(result.message || 'Login failed. Please check your credentials.');
+      }
     }
   };
 
@@ -41,10 +51,11 @@ export default function Login() {
                 type="email" 
                 placeholder="you@example.com" 
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={(e) => { setEmail(e.target.value); setEmailError(''); }}
                 required
               />
             </div>
+            {emailError && <div style={{ color: '#EF4444', fontSize: '0.85rem', marginTop: '6px' }}>{emailError}</div>}
           </div>
 
           <div className="input-group">
@@ -55,10 +66,11 @@ export default function Login() {
                 type="password" 
                 placeholder="••••••••" 
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                onChange={(e) => { setPassword(e.target.value); setPasswordError(''); }}
                 required
               />
             </div>
+            {passwordError && <div style={{ color: '#EF4444', fontSize: '0.85rem', marginTop: '6px' }}>{passwordError}</div>}
           </div>
 
           <button type="submit" className="btn-primary">
@@ -66,7 +78,7 @@ export default function Login() {
           </button>
         </form>
 
-        <div style={{ textAlign: 'center', margin: '30px 0 10px', fontSize: '1rem', color: '#B246D2' }}>
+        <div style={{ textAlign: 'center', margin: '30px 0 10px', fontSize: '1rem', color: '#06c585' }}>
           <Link to="/register" style={{ fontWeight: 600 }}>Don't have an account? Sign up</Link>
         </div>
       </div>

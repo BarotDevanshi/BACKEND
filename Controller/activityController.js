@@ -238,36 +238,33 @@ exports.getRecommendation = async (req, res) => {
 
         let suggestion = "";
 
-        if (!mood) {
-            suggestion = "Please log your mood first 😊 Insights work best when we know how you're feeling!";
+        if (!mood && tasks.length === 0) {
+            suggestion = "Welcome! 😊 Please add your mood and a task first so I can give you personalized suggestions!";
         }
-        else if (mood.mood === "happy") {
-            const high = tasks.find(t => t.priority === "high");
+        else if (mood && mood.mood === "happy") {
+            const high = tasks.find(t => t.priority === "high") || tasks[0];
             if (high) {
-                suggestion = `You're feeling happy! 😊 Perfect time to tackle your most important work:\n• Task: ${high.title}\n• Analysis: High energy allows for deep focus on challenging tasks. \n• Pro tip: You can finish this quickly right now!`;
+                suggestion = `You're feeling happy! 😊 Use this amazing energy to tackle your priority task: "${high.title}". You've got this!`;
             } else {
-                suggestion = "You're feeling happy! 😊 Use this energy to learn something new or plan your week ahead.\n• Analysis: Positive mood boosts creativity and forward-planning.";
+                suggestion = "You're feeling great! 😊 Since you have no pending tasks, maybe learn something new today or plan your week ahead!";
             }
         }
-        else if (mood.mood === "sad") {
-            suggestion = "Since you're feeling a bit down 💛, let's take a break. \n• Suggestion: Listen to uplifting music 🎵, watch a comfort movie 🎬, or try the Memory Match game in the Games tab.\n• Why this helps: Engaging in low-effort, enjoyable activities boosts dopamine safely.";
+        else if (mood && mood.mood === "sad") {
+            suggestion = "I see you're feeling a bit down 💛. It's totally okay. Take a break to do your favorite work—listen to your favorite music 🎵, play a game 🎮, or try some meditation 🧘 to relax your mind.";
         }
-        else if (mood.mood === "stressed" || mood.mood === "angry") {
-            const smallTask = tasks.find(t => t.priority === "low");
-            if (smallTask) {
-                suggestion = `You seem stressed 😟. Let's regain control with a quick win.\n• Do this now: ${smallTask.title}\n• Why this helps: Small wins give you momentum without overwhelming your brain.`;
-            } else {
-                suggestion = "You seem stressed 😟. Step away for just 5 minutes.\n• Suggestion: Try the 4-4-4-4 Breathing Exercise right now in the Games tab 🫁.\n• Why this helps: Deep breathing resets your nervous system and lowers cortisol.";
-            }
+        else if (mood && (mood.mood === "stressed" || mood.mood === "angry")) {
+            suggestion = "You seem a bit overwhelmed 😟. Step away for 5 minutes. Try deep breathing, listening to calming music, or just resting your eyes. Don't push yourself too hard right now.";
         }
         else if (sleep && sleep.duration < 5) {
             suggestion = "You had low sleep last night 😴. \n• Suggestion: Stick to light, routine work today.\n• Avoid: Making big decisions or drinking too much caffeine late in the day.";
         }
-        else if (tasks.length > 0) {
-            suggestion = `You have ${tasks.length} pending tasks 👍. Just pick one and spend 5 minutes on it. Once you start, it's easier to keep going!`;
-        }
         else {
-            suggestion = "All tasks are done! 🎉 Enjoy your free time guilt-free.";
+            const pending = tasks.length > 0 ? tasks[0] : null;
+            if (pending) {
+                suggestion = `A calm day is a productive day! 🌿 Why not start with your task: "${pending.title}"? Just 5 minutes is all it takes to build momentum.`;
+            } else {
+                suggestion = "All tasks are done! 🎉 Enjoy your free time guilt-free, read a book, or add new goals to your Dumpyard!";
+            }
         }
 
         // save recommendation

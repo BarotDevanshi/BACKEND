@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { saveSleep } from '../services/api';
 import { FiMoon, FiClock } from 'react-icons/fi';
 import { toast } from 'react-toastify';
@@ -14,6 +14,25 @@ export default function SleepCard() {
     if (timeObj.p === 'AM' && hrs === 12) hrs = 0;
     return { h: hrs, m: parseInt(timeObj.m) };
   };
+
+  useEffect(() => {
+    let b = to24(bedtime);
+    let w = to24(wakeTime);
+    if (w.h < b.h || (w.h === b.h && w.m < b.m)) w.h += 24;
+    let durationMins = (w.h * 60 + w.m) - (b.h * 60 + b.m);
+    let hours = durationMins / 60;
+    
+    if (hours <= 4.9) {
+      setQuality('poor');
+    } else if (hours >= 5 && hours < 7) {
+      setQuality('average');
+    } else if (hours >= 7 && hours <= 9) {
+      setQuality('good');
+    } else {
+      setQuality('extreme');
+    }
+  }, [bedtime, wakeTime]);
+
 
   const calculateDuration = () => {
     let b = to24(bedtime);
@@ -121,7 +140,7 @@ export default function SleepCard() {
         Sleep Quality
       </label>
       <div style={{ display: 'flex', gap: '8px', marginBottom: '20px' }}>
-        {['good', 'average', 'poor'].map(q => (
+        {['good', 'average', 'poor', 'extreme'].map(q => (
           <button
             key={q}
             onClick={() => setQuality(q)}
@@ -143,7 +162,7 @@ export default function SleepCard() {
       <button 
         style={{
           width: '100%', padding: '14px', borderRadius: 'var(--radius-md)',
-          background: '#6366F1', color: 'white', fontWeight: 600, fontSize: '1rem'
+          background: '#03553a', color: 'white', fontWeight: 600, fontSize: '1rem'
         }}
         onClick={handleSave}
       >

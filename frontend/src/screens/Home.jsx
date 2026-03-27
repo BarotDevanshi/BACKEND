@@ -6,7 +6,7 @@ import SleepCard from '../components/SleepCard';
 import RecommendationCard from '../components/RecommendationCard';
 import { BiBrain } from 'react-icons/bi';
 import { FiSmile, FiCheckSquare, FiMoon } from 'react-icons/fi';
-import { getMoods, getTasks, getSleep } from '../services/api';
+import { getMoods, getTasks, getSleep, logAppOpen } from '../services/api';
 
 export default function Home() {
   const { user } = useAuth();
@@ -45,12 +45,14 @@ export default function Home() {
       }
     }
     loadStats();
+    // Log daily app open for streak (no-op if already called today)
+    logAppOpen().catch(() => {});
   }, []);
 
   const quickNav = [
-    { id: 'mood-card', label: 'Mood', icon: <FiSmile size={20}/>, color: '#D53EB1', val: stats.mood },
-    { id: 'task-card', label: 'Tasks', icon: <FiCheckSquare size={20}/>, color: '#4E9AFE', val: stats.tasks },
-    { id: 'sleep-card', label: 'Sleep', icon: <FiMoon size={20}/>, color: '#746DFB', val: stats.sleep },
+    { id: 'mood-card', label: 'Mood', icon: <FiSmile size={20}/>, color: '#179044', val: stats.mood },
+    { id: 'task-card', label: 'Tasks', icon: <FiCheckSquare size={20}/>, color: '#179044', val: stats.tasks },
+    { id: 'sleep-card', label: 'Sleep', icon: <FiMoon size={20}/>, color: '#179044', val: stats.sleep },
   ];
 
   const scrollTo = (id) => {
@@ -69,7 +71,7 @@ export default function Home() {
           <BiBrain />
           Hello, {userName}!
         </h1>
-        <p>Let's make today great 💙</p>
+        <p>Let's make today great 🤍</p>
       </div>
 
       {/* Quick Navigation / Overview Cards (Glassmorphism) */}
@@ -100,7 +102,6 @@ export default function Home() {
               <div style={{ width: '40px', height: '40px', borderRadius: '14px', background: `${n.color}20`, color: n.color, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '4px' }}>
                 {n.icon}
               </div>
-              <span style={{ fontSize: '0.95rem', fontWeight: 800, color: 'var(--text-primary)', textAlign: 'center' }}>{n.val}</span>
               <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-tertiary)', textAlign: 'center', letterSpacing: '0.5px', textTransform: 'uppercase' }}>{n.label}</span>
             </div>
           ))}

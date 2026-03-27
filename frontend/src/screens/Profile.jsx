@@ -260,7 +260,7 @@ export default function Profile() {
         {[{key:'avatar',label:'🎭 My Avatar'},{key:'settings',label:'⚙️ Settings'}].map(t => (
           <button key={t.key} onClick={() => setTab(t.key)} style={{
             flex:1, padding:'12px', borderRadius:'12px', border:'none', cursor:'pointer', fontWeight:700, fontSize:'0.88rem',
-            background: tab===t.key ? 'linear-gradient(135deg,#B246D2,#F037A5)' : 'transparent',
+            background: tab===t.key ? 'linear-gradient(135deg, #016443, #06c585)' : 'transparent',
             color: tab===t.key ? 'white' : 'var(--text-secondary)', transition:'all 0.3s'
           }}>{t.label}</button>
         ))}
@@ -275,10 +275,10 @@ export default function Profile() {
             {['girl','boy'].map(g => (
               <button key={g} onClick={() => { save('nn-gender',g,setGender); setHairStyle(g==='girl'?'straight':'undercut'); }} style={{
                 flex:1, padding:'13px', borderRadius:'16px',
-                border:`2px solid ${gender===g?'#B246D2':'var(--border)'}`,
+                border:`2px solid ${gender===g?'#06c585':'var(--border)'}`,
                 background: gender===g ? 'linear-gradient(135deg,rgba(178,70,210,0.12),rgba(240,55,165,0.08))' : 'var(--bg-secondary)',
                 fontWeight:700, fontSize:'1rem', cursor:'pointer',
-                color: gender===g ? '#B246D2' : 'var(--text-secondary)', transition:'all 0.25s'
+                color: gender===g ? '#06c585' : 'var(--text-secondary)', transition:'all 0.25s'
               }}>{g==='girl'?'👩 Girl':'👦 Boy'}</button>
             ))}
           </div>
@@ -337,8 +337,8 @@ export default function Profile() {
               {STYLES.map(hs => (
                 <button key={hs} onClick={() => save('nn-hairStyle',hs,setHairStyle)} style={{
                   padding:'8px 18px', borderRadius:'20px', cursor:'pointer',
-                  border:`2px solid ${hairStyle===hs?'#B246D2':'var(--border)'}`,
-                  background: hairStyle===hs?'linear-gradient(135deg,#B246D2,#F037A5)':'var(--bg-input)',
+                  border:`2px solid ${hairStyle===hs?'#016443':'var(--border)'}`,
+                  background: hairStyle===hs?'linear-gradient(135deg, #016443, #06c585)':'var(--bg-input)',
                   color: hairStyle===hs?'white':'var(--text-secondary)',
                   fontWeight:600, fontSize:'0.82rem', textTransform:'capitalize', transition:'all 0.2s'
                 }}>{hs}</button>
@@ -401,22 +401,9 @@ export default function Profile() {
                   <p style={{ fontSize:'0.73rem', color:'var(--text-tertiary)' }}>Change app appearance</p>
                 </div>
               </div>
-              <div onClick={() => setDark(!dark)} style={{ width:'52px', height:'28px', borderRadius:'14px', cursor:'pointer', background: dark?'linear-gradient(135deg,#B246D2,#F037A5)':'#E5E7EB', position:'relative', transition:'background 0.3s' }}>
+              <div onClick={() => setDark(!dark)} style={{ width:'52px', height:'28px', borderRadius:'14px', cursor:'pointer', background: dark?'linear-gradient(135deg, #016443, #06c585)':'#E5E7EB', position:'relative', transition:'background 0.3s' }}>
                 <div style={{ position:'absolute', top:'3px', left: dark?'26px':'3px', width:'22px', height:'22px', borderRadius:'50%', background:'white', boxShadow:'0 2px 6px rgba(0,0,0,0.2)', transition:'left 0.3s' }}></div>
               </div>
-            </div>
-          </div>
-
-          {/* Display Name */}
-          <div style={{ background:'var(--bg-secondary)', borderRadius:'20px', padding:'20px', marginBottom:'12px', border:'1px solid var(--border)' }}>
-            <p style={{ fontWeight:700, color:'var(--text-primary)', marginBottom:'14px', display:'flex', alignItems:'center', gap:'8px', fontSize:'0.92rem' }}>
-              <FiUser size={16} color="#B246D2"/> Display Name
-            </p>
-            <div style={{ display:'flex', gap:'10px' }}>
-              <input value={displayName} onChange={e=>setDisplayName(e.target.value)} placeholder="Your name..." style={{ flex:1, padding:'12px 16px', borderRadius:'12px', border:'2px solid var(--border)', background:'var(--bg-input)', fontSize:'0.95rem', color:'var(--text-primary)', outline:'none' }}/>
-              <button onClick={saveSettings} style={{ padding:'12px 18px', borderRadius:'12px', background:'linear-gradient(135deg,#B246D2,#F037A5)', color:'white', fontWeight:700, border:'none', cursor:'pointer' }}>
-                <FiEdit2 size={16}/>
-              </button>
             </div>
           </div>
 
@@ -462,14 +449,14 @@ export default function Profile() {
       {/* ── NeuroNexus Branding ── */}
       <div style={{ padding: '24px', textAlign: 'center', marginTop: '10px' }}>
         <div style={{
-          width: '64px', height: '64px', background: 'linear-gradient(135deg, #B246D2, #F037A5)',
+          width: '64px', height: '64px', background: 'linear-gradient(135deg, #016443, #06c585)',
           borderRadius: '16px', margin: '0 auto 12px', display: 'flex', alignItems: 'center', justifyContent: 'center',
           boxShadow: '0 8px 16px rgba(178,70,210,0.3)', color: 'white'
         }}>
           <BiBrain size={36} />
         </div>
         <h3 style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '4px' }}>NeuroNexus</h3>
-        <p style={{ color: '#B246D2', fontWeight: 600, fontSize: '0.9rem', marginBottom: '8px' }}>Version 1.0.0</p>
+        <p style={{ color: '#06c585', fontWeight: 600, fontSize: '0.9rem', marginBottom: '8px' }}>Version 1.0.0</p>
         <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>Your ADHD-friendly productivity companion</p>
       </div>
 

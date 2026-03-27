@@ -1,43 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { toast } from 'react-toastify';
-import { logGameActivity } from '../services/api';
 import { IoGameControllerOutline } from 'react-icons/io5';
-import { FiAward, FiZap } from 'react-icons/fi';
-
-// ─── REWARD MODAL ──────────────────────────────────────────────────────────
-function RewardModal({ result, onClose }) {
-  if (!result) return null;
-  return (
-    <div style={{
-      position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)',
-      display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 999, padding: '20px'
-    }}>
-      <div style={{
-        background: 'white', borderRadius: '24px', padding: '32px', textAlign: 'center',
-        maxWidth: '320px', width: '100%', boxShadow: '0 25px 50px rgba(0,0,0,0.3)'
-      }}>
-        <div style={{ fontSize: '3rem', marginBottom: '8px' }}>{result.badgeEarned ? '🏆' : '✨'}</div>
-        <h2 style={{ fontWeight: 800, fontSize: '1.4rem', marginBottom: '8px', background: 'linear-gradient(135deg,#B246D2,#F037A5)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-          {result.badgeEarned ? 'Badge Earned!' : 'Great Job!'}
-        </h2>
-        {result.badgeEarned && (
-          <div style={{ background: 'linear-gradient(135deg,#B246D2,#F037A5)', borderRadius: '12px', padding: '10px 20px', color: 'white', fontWeight: 700, fontSize: '1.1rem', margin: '12px 0' }}>
-            {result.badgeEarned}
-          </div>
-        )}
-        <p style={{ color: '#6B7280', marginBottom: '6px' }}>{result.rewardTip}</p>
-        {result.streakIncreased && (
-          <p style={{ color: '#F97316', fontWeight: 700, fontSize: '1rem' }}>🔥 +1 Streak Day!</p>
-        )}
-        <p style={{ color: '#9CA3AF', fontSize: '0.85rem', marginTop: '8px' }}>Games played: {result.gamesPlayed}</p>
-        <button
-          onClick={onClose}
-          style={{ marginTop: '20px', width: '100%', padding: '14px', borderRadius: '12px', background: 'linear-gradient(135deg,#B246D2,#F037A5)', color: 'white', fontWeight: 700, fontSize: '1rem', border: 'none', cursor: 'pointer' }}
-        >Awesome! 🚀</button>
-      </div>
-    </div>
-  );
-}
+// No reward modal anymore; games are just for relaxation.
 
 // ─── 1. BREATHING EXERCISE ─────────────────────────────────────────────────
 function BreathingGame({ onComplete }) {
@@ -116,7 +80,7 @@ function BreathingGame({ onComplete }) {
           {/* Inner breathing circle */}
           <div style={{
             width: '100px', height: '100px', borderRadius: '50%',
-            background: phase === 'idle' ? 'linear-gradient(135deg,#B246D2,#F037A5)' : currentPhase.color,
+            background: phase === 'idle' ? 'linear-gradient(135deg, #058b5e 0%, #119166 60%, #0dcf8e 100%)' : currentPhase.color,
             transform: `scale(${circleScale})`,
             transition: `transform ${currentPhase?.duration || 1}s ease-in-out, background 0.5s`,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -140,7 +104,7 @@ function BreathingGame({ onComplete }) {
       )}
 
       {phase === 'idle' && (
-        <button onClick={startBreathing} style={{ width: '100%', padding: '14px', borderRadius: '12px', background: 'linear-gradient(135deg,#B246D2,#F037A5)', color: 'white', fontWeight: 700, border: 'none', cursor: 'pointer', fontSize: '1rem' }}>
+        <button onClick={startBreathing} style={{ width: '100%', padding: '14px', borderRadius: '12px', background: 'linear-gradient(135deg, #058b5e 0%, #119166 60%, #0dcf8e 100%)', color: 'white', fontWeight: 700, border: 'none', cursor: 'pointer', fontSize: '1rem' }}>
           Start Breathing 🌬️
         </button>
       )}
@@ -200,7 +164,7 @@ function MemoryMatch({ onComplete }) {
     <div className="card" style={{ padding: '24px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
         <h3 style={{ fontSize: '1.2rem', fontWeight: 700 }}>Memory Match 🎯</h3>
-        <button onClick={initGame} style={{ background: 'var(--primary-light,#F3E8FF)', color: '#A855F7', borderRadius: '8px', padding: '6px 14px', fontWeight: 700, border: 'none', cursor: 'pointer' }}>
+        <button onClick={initGame} style={{ background: 'var(--primary-light,#F3E8FF)', color: '#119166', borderRadius: '8px', padding: '6px 14px', fontWeight: 700, border: 'none', cursor: 'pointer' }}>
           {started ? '↻ Reset' : 'Start'}
         </button>
       </div>
@@ -209,7 +173,7 @@ function MemoryMatch({ onComplete }) {
         <div style={{ textAlign: 'center', padding: '30px 0' }}>
           <div style={{ fontSize: '3rem', marginBottom: '12px' }}>🃏</div>
           <p style={{ color: '#9CA3AF', marginBottom: '20px' }}>Match all 8 emoji pairs!</p>
-          <button onClick={initGame} style={{ padding: '12px 32px', borderRadius: '12px', background: 'linear-gradient(135deg,#B246D2,#F037A5)', color: 'white', fontWeight: 700, border: 'none', cursor: 'pointer', fontSize: '1rem' }}>
+          <button onClick={initGame} style={{ padding: '12px 32px', borderRadius: '12px', background: 'linear-gradient(135deg, #058b5e 0%, #119166 60%, #0dcf8e 100%)', color: 'white', fontWeight: 700, border: 'none', cursor: 'pointer', fontSize: '1rem' }}>
             Start Game 🎮
           </button>
         </div>
@@ -276,7 +240,7 @@ function StressPop({ onComplete }) {
       {!started ? (
         <div style={{ textAlign: 'center', padding: '20px 0' }}>
           <div style={{ fontSize: '3rem', marginBottom: '12px' }}>🫧</div>
-          <button onClick={startGame} style={{ padding: '12px 32px', borderRadius: '12px', background: 'linear-gradient(135deg,#B246D2,#F037A5)', color: 'white', fontWeight: 700, border: 'none', cursor: 'pointer', fontSize: '1rem' }}>
+          <button onClick={startGame} style={{ padding: '12px 32px', borderRadius: '12px', background: 'linear-gradient(135deg, #058b5e 0%, #119166 60%, #0dcf8e 100%)', color: 'white', fontWeight: 700, border: 'none', cursor: 'pointer', fontSize: '1rem' }}>
             Pop 'Em All! 💥
           </button>
         </div>
@@ -311,17 +275,13 @@ function StressPop({ onComplete }) {
 
 // ─── MAIN GAMES SCREEN ─────────────────────────────────────────────────────
 export default function Games() {
-  const [reward, setReward] = useState(null);
   const [activeGame, setActiveGame] = useState(null);
 
-  const handleGameComplete = async (gameName) => {
-    toast.success(`${gameName} complete! 🎉`);
-    try {
-      const { data } = await logGameActivity();
-      setReward(data);
-    } catch {
-      setReward({ rewardTip: 'Great job! Keep playing! 🚀', streakIncreased: false, badgeEarned: null, gamesPlayed: '?' });
-    }
+  const handleGameComplete = (gameName) => {
+    toast.success(`${gameName} complete! Great job taking a moment for yourself. 🌿`, {
+      icon: '✨'
+    });
+    setActiveGame(null);
   };
 
   const GAME_LIST = [
@@ -333,7 +293,6 @@ export default function Games() {
   if (activeGame) {
     return (
       <div style={{ paddingBottom: '80px', padding: '16px' }}>
-        <RewardModal result={reward} onClose={() => setReward(null)} />
         <button 
           onClick={() => setActiveGame(null)} 
           style={{ background: 'var(--bg-secondary)', color: 'var(--text-primary)', border: '1px solid var(--border)', padding: '8px 16px', borderRadius: '12px', fontWeight: 700, cursor: 'pointer', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}
@@ -349,20 +308,12 @@ export default function Games() {
 
   return (
     <div style={{ paddingBottom: '80px' }}>
-      <RewardModal result={reward} onClose={() => setReward(null)} />
-
       <div className="gradient-header">
         <h1><IoGameControllerOutline /> Mind Games</h1>
         <p>Relax, focus &amp; recharge 🧠</p>
       </div>
 
       <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-        {/* Badges strip */}
-        <div className="card" style={{ padding: '16px', display: 'flex', gap: '10px', alignItems: 'center', marginBottom: '8px' }}>
-          <FiAward size={20} color="#F59E0B" />
-          <span style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: '0.9rem' }}>Play 3 games to earn a badge &amp; +1 streak!</span>
-          <FiZap size={16} color="#F97316" style={{ marginLeft: 'auto' }} />
-        </div>
 
         {GAME_LIST.map(game => (
           <div 

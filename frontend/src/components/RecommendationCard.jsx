@@ -26,7 +26,7 @@ export default function RecommendationCard() {
     <div style={{ padding: '0 16px', marginBottom: '20px' }}>
       <div 
         style={{
-          background: 'linear-gradient(135deg, #a855f7, #ec4899)',
+          background: 'linear-gradient(135deg, #016443, #06c585)', // Green gradient
           borderRadius: '20px',
           padding: '20px',
           color: 'white',

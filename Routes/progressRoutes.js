@@ -1,13 +1,14 @@
 const express = require("express");
 const router = express.Router();
 
-const { getProgress, logGamePlayed } = require("../Controller/progressController");
+const { getProgress, logAppOpen } = require("../Controller/progressController");
 const auth = require("../Middleware/authMiddleware");
 
 // Get progress
 router.get("/", auth, getProgress);
 
-// Gamification: Log game played
-router.post("/game-played", auth, logGamePlayed);
+
+// Daily app-open streak
+router.post("/app-open", auth, logAppOpen);
 
 module.exports = router;

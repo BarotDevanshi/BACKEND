@@ -7,7 +7,7 @@ import {
   ArcElement, BarElement, Filler, Tooltip, Legend,
   RadialLinearScale,
 } from 'chart.js';
-import { FiTarget, FiTrendingUp, FiAward, FiZap } from 'react-icons/fi';
+import { FiTarget, FiTrendingUp, FiZap } from 'react-icons/fi';
 import { BiSmile, BiMoon } from 'react-icons/bi';
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, ArcElement, BarElement, Filler, Tooltip, Legend, RadialLinearScale);
@@ -58,32 +58,92 @@ export default function Dashboard() {
     }
   });
 
-  // ── Weekly Heap ──────────────────────────────────────────────────────────
+  // ── Weekly Mood & Task Data ───────────────────────────────────────────────
   const daysOfWeek = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-  const heapData = Array(7).fill(0);
-  tasks.filter(t => t.status === 'completed').forEach(t => {
+  // Only show days Mon → today (exclude future days)
+  const todayJsDay = today.getDay(); // 0=Sun,1=Mon,...,6=Sat
+  const todayIdx = todayJsDay === 0 ? 6 : todayJsDay - 1; // convert to Mon=0..Sun=6
+  const visibleDays = daysOfWeek.slice(0, todayIdx + 1);
+
+  const completedTasksByDay = Array(7).fill(0);
+  const totalTasksByDay = Array(7).fill(0);
+  const moodByDayOfWeek = Array(7).fill(0);
+  const moodCountByDayOfWeek = Array(7).fill(0);
+
+  tasks.forEach(t => {
     const d = new Date(t.updatedAt || t.createdAt);
     const diffDays = Math.floor((today - d) / 86400000);
     if (diffDays < 7) {
       const dayStr = d.toLocaleDateString('en', { weekday: 'short' });
       const idx = daysOfWeek.indexOf(dayStr);
-      if (idx !== -1) heapData[idx] += 1;
+      if (idx !== -1) {
+        totalTasksByDay[idx] += 1;
+        if (t.status === 'completed') completedTasksByDay[idx] += 1;
+      }
     }
   });
-  const maxHeap = Math.max(...heapData, 1);
 
-  // ── Mood Line Chart (Time & Day Wise in Tooltip) ──────────────────────────
-  const recentMoods = moods.length > 0 ? [...moods].reverse().slice(-14) : [{ createdAt: new Date(), mood: 'neutral' }];
+  moods.forEach(m => {
+    const d = new Date(m.createdAt);
+    const diffDays = Math.floor((today - d) / 86400000);
+    if (diffDays < 7) {
+      const dayStr = d.toLocaleDateString('en', { weekday: 'short' });
+      const idx = daysOfWeek.indexOf(dayStr);
+      if (idx !== -1) {
+        moodByDayOfWeek[idx] += (MOOD_VALUES[m.mood] ?? 3);
+        moodCountByDayOfWeek[idx] += 1;
+      }
+    }
+  });
+
+  const avgMoodByDay = moodByDayOfWeek.map((val, idx) => {
+    return moodCountByDayOfWeek[idx] > 0 ? Math.round(val / moodCountByDayOfWeek[idx]) : null;
+  });
+
+  // Sliced to visible days only
+  const visibleTotal     = totalTasksByDay.slice(0, todayIdx + 1);
+  const visibleCompleted = completedTasksByDay.slice(0, todayIdx + 1);
+  const visibleMoodCount = moodCountByDayOfWeek.slice(0, todayIdx + 1);
+
+  // Clustered bar chart — two bars side by side per day
+  const taskBarChartData = {
+    labels: visibleDays,
+    datasets: [
+      {
+        label: 'Total',
+        data: visibleTotal,
+        backgroundColor: '#68c3ff',   // light violet
+        borderRadius: 5,
+        barPercentage: 0.75,
+        categoryPercentage: 0.65,
+      },
+      {
+        label: 'Completed',
+        data: visibleCompleted,
+        backgroundColor: '#3873f1',   // dark violet
+        borderRadius: 5,
+        barPercentage: 0.75,
+        categoryPercentage: 0.65,
+      },
+    ]
+  };
+
   const moodChartData = {
-    labels: recentMoods.map(m => new Date(m.createdAt).toLocaleDateString('en', { weekday: 'short' })),
-    datasets: [{ 
-      label: 'Mood Level', 
-      data: recentMoods.map(m => MOOD_VALUES[m.mood] ?? 3), 
-      times: recentMoods.map(m => new Date(m.createdAt).toLocaleTimeString('en', { hour: '2-digit', minute:'2-digit' })),
-      borderColor: '#B246D2', 
-      backgroundColor: 'rgba(178,70,210,0.12)', 
-      borderWidth: 2.5, fill: true, tension: 0.3, 
-      pointBackgroundColor: '#B246D2', pointBorderColor: '#fff', pointBorderWidth: 2, pointRadius: 5 
+    labels: visibleDays,
+    datasets: [{
+      label: 'Mood Inputs',
+      data: visibleMoodCount,
+      borderColor: '#C08497',
+      backgroundColor: '#f3b6c4',
+      borderWidth: 2.5,
+      fill: true,
+      tension: 0.4,
+      pointBackgroundColor: '#DB2777',
+      pointBorderColor: '#9D174D',
+      pointBorderWidth: 2,
+      pointRadius: 5,
+      pointHoverRadius: 7,
+      spanGaps: true,
     }],
   };
 
@@ -91,32 +151,89 @@ export default function Dashboard() {
   const recent7Sleep = sleepData.slice(0, 7).reverse();
   const sleepChartData = {
     labels: recent7Sleep.length > 0 ? recent7Sleep.map((_, i) => `Day ${i + 1}`) : ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
-    datasets: [{ label: 'Hours', data: recent7Sleep.length > 0 ? recent7Sleep.map(s => parseFloat((s.duration || 0).toFixed(1))) : Array(7).fill(0), backgroundColor: '#6D28D9', borderRadius: 8 }],
+    datasets: [{ label: 'Hours', data: recent7Sleep.length > 0 ? recent7Sleep.map(s => parseFloat((s.duration || 0).toFixed(1))) : Array(7).fill(0), backgroundColor: '#18bc85', borderRadius: 8 }],
   };
 
-  // ── Task Doughnut ─────────────────────────────────────────────────────────
-  const taskDonutData = {
-    labels: ['Completed', 'Pending'],
-    datasets: [{ data: [completedTasks || 1, pendingTasks || 0], backgroundColor: ['#4ADE80', '#FB923C'], borderWidth: 0, cutout: '72%' }],
-  };
-
-  const lineOpts = { 
-    responsive: true, maintainAspectRatio: false, 
-    plugins: { 
+  const moodLineOpts = {
+    responsive: true, maintainAspectRatio: false,
+    plugins: {
       legend: { display: false },
       tooltip: {
+        mode: 'index',
+        intersect: false,
+        backgroundColor: '#ffffff',
+        titleColor: '#1F2937',
+        titleFont: { size: 14, weight: 'bold' },
+        bodyColor: '#1de1fb',
+        bodyFont: { size: 13 },
+        borderColor: '#E5E7EB',
+        borderWidth: 1,
+        padding: 12,
+        displayColors: false,
         callbacks: {
-          title: (ctx) => `${ctx[0].label} ${ctx[0].dataset.times[ctx[0].dataIndex]}`
+          title: (ctx) => ctx[0].label,
+          label: (ctx) => `Inputs : ${ctx.raw ?? 0}`
         }
       }
-    }, 
-    scales: { 
-      x: { grid: { color: '#F3F4F6', borderDash: [4, 4] }, ticks: { color: '#9CA3AF', font: { size: 11 } } }, 
-      y: { grid: { color: '#F3F4F6', borderDash: [4, 4] }, beginAtZero: true, max: 6, ticks: { stepSize: 2, color: '#9CA3AF', font: { size: 11 } } } 
-    } 
+    },
+    scales: {
+      x: { grid: { display: false }, ticks: { color: '#9CA3AF', font: { size: 11 } } },
+      y: { grid: { color: '#F3F4F6', borderDash: [4, 4] }, beginAtZero: true, ticks: { precision: 0, color: '#9CA3AF', font: { size: 11 } } }
+    }
   };
-  const barOpts = { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { grid: { display: false }, ticks: { color: '#9CA3AF', font: { size: 11 } } }, y: { grid: { color: '#F3F4F6', borderDash: [4, 4] }, beginAtZero: true, max: 12, ticks: { stepSize: 3, color: '#9CA3AF', font: { size: 11 } } } } };
-  const donutOpts = { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } };
+
+  const barOpts = { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { grid: { display: false }, ticks: { color: '#9CA3AF', font: { size: 11 } } }, y: { grid: { color: '#F3F4F6', borderDash: [4, 4] }, beginAtZero: true, ticks: { color: '#9CA3AF', font: { size: 11 } } } } };
+  
+  const taskBarOpts = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        display: true,
+        position: 'top',
+        labels: {
+          font: { size: 11, weight: '600' },
+          color: '#374151',
+          usePointStyle: true,
+          pointStyleWidth: 10,
+          padding: 12,
+          generateLabels: (chart) => chart.data.datasets.map((ds, i) => ({
+            text: ds.label,
+            fillStyle: ds.backgroundColor,
+            strokeStyle: ds.backgroundColor,
+            hidden: false,
+            datasetIndex: i,
+          }))
+        }
+      },
+      tooltip: {
+        mode: 'index',
+        intersect: false,
+        backgroundColor: '#1F1F2E',
+        titleColor: '#fff',
+        titleFont: { size: 13, weight: 'bold' },
+        bodyFont: { size: 12 },
+        borderColor: '#5B21B6',
+        borderWidth: 1,
+        padding: 10,
+        displayColors: true,
+        boxWidth: 10,
+        boxHeight: 10,
+        boxPadding: 4,
+        callbacks: {
+          title: (ctx) => ctx[0].label,
+          label: (ctx) => {
+            const isTotal = ctx.dataset.label === 'Total';
+            return `  ${isTotal ? 'Total Tasks' : 'Completed'}: ${ctx.raw}`;
+          },
+        }
+      }
+    },
+    scales: {
+      x: { grid: { display: false }, ticks: { color: '#9CA3AF', font: { size: 11 } } },
+      y: { grid: { color: '#F3F4F6', borderDash: [4, 4] }, beginAtZero: true, ticks: { precision: 0, color: '#9CA3AF', font: { size: 11 } } }
+    }
+  };
 
   const monthName = today.toLocaleString('default', { month: 'long', year: 'numeric' });
   const totalDaysInCalendar = firstDay + daysInMonth;
@@ -149,20 +266,6 @@ export default function Dashboard() {
         ))}
       </div>
 
-      {/* ── Badges ── */}
-      {progress?.badges?.length > 0 && (
-        <div className="card" style={{ margin: '0 16px 20px', padding: '16px' }}>
-          <h3 style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '1rem', fontWeight: 700, marginBottom: '12px' }}>
-            <FiAward color="#F59E0B" size={18} /> My Badges
-          </h3>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-            {progress.badges.map((b, i) => (
-              <span key={i} style={{ background: 'linear-gradient(135deg,#B246D2,#F037A5)', color: 'white', borderRadius: '20px', padding: '5px 14px', fontSize: '0.82rem', fontWeight: 700 }}>{b}</span>
-            ))}
-          </div>
-          <p style={{ color: '#9CA3AF', fontSize: '0.78rem', marginTop: '10px' }}>Games played: <strong style={{ color: '#374151' }}>{progress.gamesPlayed || 0}</strong></p>
-        </div>
-      )}
 
       {/* ── Mood Web Radar Chart ── */}
       <div className="card" style={{ margin: '0 16px 20px', padding: '20px' }}>
@@ -186,7 +289,7 @@ export default function Dashboard() {
                 borderColor: '#B246D2',
                 borderWidth: 2.5,
                 pointBackgroundColor: '#F037A5',
-                pointRadius: 5,
+                pointRadius: 5,   
               }],
             }}
             options={{
@@ -201,10 +304,9 @@ export default function Dashboard() {
 
       {/* ── Mood Trend ── */}
       <div className="card" style={{ margin: '0 16px 20px', padding: '20px' }}>
-        <h3 style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '1rem', fontWeight: 700, marginBottom: '16px' }}>
-          <BiSmile size={18} color="#B246D2" /> Mood Trend
-        </h3>
-        <div style={{ height: '180px' }}><Line data={moodChartData} options={lineOpts} /></div>
+        <h3 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '4px' }}>Mood Trends</h3>
+        <p style={{ fontSize: '0.78rem', color: '#9CA3AF', marginBottom: '14px' }}>Total mood inputs per day</p>
+        <div style={{ height: '180px' }}><Line data={moodChartData} options={moodLineOpts} /></div>
       </div>
 
       {/* ── Sleep ── */}
@@ -215,23 +317,10 @@ export default function Dashboard() {
         <div style={{ height: '180px' }}><Bar data={sleepChartData} options={barOpts} /></div>
       </div>
 
-      {/* ── Task Donut ── */}
+      {/* ── Task Bar ── */}
       <div className="card" style={{ margin: '0 16px 20px', padding: '20px' }}>
-        <h3 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '16px' }}>Task Distribution</h3>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
-          <div style={{ height: '160px', flex: '0 0 160px' }}><Doughnut data={taskDonutData} options={donutOpts} /></div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <div style={{ width: '12px', height: '12px', borderRadius: '3px', background: '#4ADE80' }}></div>
-              <span style={{ fontSize: '0.85rem', color: '#6B7280' }}>Done <strong style={{ color: '#1F2937' }}>{completedTasks}</strong></span>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <div style={{ width: '12px', height: '12px', borderRadius: '3px', background: '#FB923C' }}></div>
-              <span style={{ fontSize: '0.85rem', color: '#6B7280' }}>Pending <strong style={{ color: '#1F2937' }}>{pendingTasks}</strong></span>
-            </div>
-            <div style={{ marginTop: '4px', fontSize: '1.2rem', fontWeight: 800, color: '#1F2937' }}>{completionRate}%</div>
-          </div>
-        </div>
+        <h3 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '16px' }}>Task Completion</h3>
+        <div style={{ height: '180px' }}><Bar data={taskBarChartData} options={taskBarOpts} /></div>
       </div>
 
 

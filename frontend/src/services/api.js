@@ -41,6 +41,7 @@ export const getRecommendation = () => API.post('/activity/recommend');
 
 // Progress
 export const getProgress = () => API.get('/progress');
-export const logGameActivity = () => API.post('/progress/game-played');
+
+export const logAppOpen = () => API.post('/progress/app-open');
 
 export default API;

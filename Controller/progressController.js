@@ -77,56 +77,29 @@ exports.getProgress = async (req, res) => {
     }
 };
 
-// 🎮 GAMIFICATION: LOG GAME PLAYED
-exports.logGamePlayed = async (req, res) => {
+
+// 📅 LOG APP OPEN: +1 streak only on first open of each day (skipping days keeps streak)
+exports.logAppOpen = async (req, res) => {
     try {
         let progress = await Progress.findOne({ userId: req.user.id });
         if (!progress) {
             progress = await Progress.create({ userId: req.user.id });
         }
 
-        // Increment games played
-        progress.gamesPlayed = (progress.gamesPlayed || 0) + 1;
-        
-        let rewardTip = "Great job engaging your brain! Keep it up. 🚀";
+        const todayStr = new Date().toDateString();
+        const lastOpenStr = progress.lastOpenedDate ? new Date(progress.lastOpenedDate).toDateString() : null;
+
         let streakIncreased = false;
-        let badgeEarned = null;
 
-        // Give a major reward every 3 games
-        if (progress.gamesPlayed % 3 === 0) {
-            progress.streak += 1;
+        if (lastOpenStr !== todayStr) {
+            // First open today → increment streak
+            progress.streak = (progress.streak || 0) + 1;
+            progress.lastOpenedDate = new Date();
             streakIncreased = true;
-            rewardTip = "Amazing consistency! Have a free +1 Day Streak! 🔥";
-
-            // Give a random badge
-            const potentialBadges = [
-                "Zen Master 🧘", "Brain Athlete 🧠", 
-                "Focus Champion 🎯", "Stress Buster 💥", 
-                "Mindful Explorer 🌿", "Calm Spirit ☁️"
-            ];
-            const newBadge = potentialBadges[Math.floor(Math.random() * potentialBadges.length)];
-            
-            // Only add if they don't have it (optional, but let's allow multiples or just keep adding)
-            if (!progress.badges.includes(newBadge)) {
-                progress.badges.push(newBadge);
-                badgeEarned = newBadge;
-            } else {
-                // If they already got that random badge, give a generic level-up badge
-                badgeEarned = `Level ${progress.gamesPlayed / 3} Master 🌟`;
-                progress.badges.push(badgeEarned);
-            }
+            await progress.save();
         }
 
-        await progress.save();
-
-        res.json({ 
-            success: true, 
-            gamesPlayed: progress.gamesPlayed,
-            streakIncreased,
-            badgeEarned,
-            rewardTip,
-            currentStreak: progress.streak
-        });
+        res.json({ success: true, streak: progress.streak, streakIncreased });
 
     } catch (err) {
         res.status(500).json({ error: err.message });

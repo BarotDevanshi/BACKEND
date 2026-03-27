@@ -128,6 +128,17 @@ export default function TaskCard() {
                 {task.title}
               </span>
 
+              <span style={{
+                fontSize: '0.75rem',
+                padding: '4px 8px',
+                borderRadius: '12px',
+                background: 'var(--bg-secondary)',
+                color: 'var(--text-secondary)',
+                textTransform: 'capitalize'
+              }}>
+                {task.priority || 'medium'}
+              </span>
+
               <button 
                 onClick={() => handleDelete(task._id)}
                 style={{ color: '#EF4444', background: 'transparent', padding: '4px' }}

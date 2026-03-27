@@ -23,6 +23,14 @@ exports.createTask = async (req, res) => {
 // ➤ Get All Tasks (with subtasks)
 exports.getTasks = async (req, res) => {
     try {
+        // 🔥 Auto-delete completed tasks older than 24 hours
+        const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+        await Task.deleteMany({
+            userId: req.user.id,
+            status: "completed",
+            updatedAt: { $lt: twentyFourHoursAgo }
+        });
+
         const tasks = await Task.find({ userId: req.user.id });
 
         res.json({ success: true, data: tasks });
