@@ -11,6 +11,8 @@ import Chat from './screens/Chat';
 import Games from './screens/Games';
 import Profile from './screens/Profile';
 
+import Sidebar from './components/Sidebar';
+
 function ProtectedRoute({ children }) {
   const { isAuthenticated } = useAuth();
   return isAuthenticated ? children : <Navigate to="/login" replace />;
@@ -24,6 +26,7 @@ function AuthRoute({ children }) {
 function AppLayout() {
   return (
     <div className="app">
+      <Sidebar />
       <main className="app-content">
         <Routes>
           <Route path="/" element={<Home />} />

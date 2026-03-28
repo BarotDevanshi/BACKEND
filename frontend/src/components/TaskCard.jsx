@@ -15,8 +15,14 @@ export default function TaskCard() {
   const [priority, setPriority] = useState('medium');
   const [showClearNotif, setShowClearNotif] = useState(true);
 
+  const [now, setNow] = useState(new Date());
+
   useEffect(() => {
     loadTasks();
+    const interval = setInterval(() => {
+      setNow(new Date());
+    }, 60000); // Check every minute
+    return () => clearInterval(interval);
   }, []);
 
   const loadTasks = async () => {
@@ -55,7 +61,6 @@ export default function TaskCard() {
     } catch {}
   };
 
-  const now = new Date();
   const visibleTasks = tasks.filter(t => {
     if (t.status === 'completed') {
       const updatedAt = new Date(t.updatedAt || t.createdAt);
