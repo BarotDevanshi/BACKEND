@@ -10,16 +10,29 @@ export function AuthProvider({ children }) {
   const [token, setToken] = useState(localStorage.getItem('neuro_token'));
   const [loading, setLoading] = useState(false);
 
+  const safeDecodeJWT = (t) => {
+    try {
+      const base64Url = t.split('.')[1];
+      const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+      const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
+        return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+      }).join(''));
+      return JSON.parse(jsonPayload);
+    } catch (e) {
+      console.error('JWT Decode Error:', e);
+      return null;
+    }
+  };
+
   useEffect(() => {
     if (token) {
-      // Decode JWT to get user info
-      try {
-        const payload = JSON.parse(atob(token.split('.')[1]));
+      const payload = safeDecodeJWT(token);
+      if (payload) {
         setUser({ id: payload.id, name: payload.name, email: payload.email });
         if (payload.name && !localStorage.getItem('nn-displayName')) {
           localStorage.setItem('nn-displayName', payload.name);
         }
-      } catch {
+      } else {
         logout();
       }
     }
@@ -34,7 +47,13 @@ export function AuthProvider({ children }) {
       setToken(t);
       return { success: true };
     } catch (err) {
-      return { success: false, message: err.response?.data?.message || 'Login failed' };
+      let msg = 'Login failed';
+      if (!err.response) {
+        msg = 'Connection Error: Please check your internet or API URL.';
+      } else if (err.response.data && err.response.data.message) {
+        msg = err.response.data.message;
+      }
+      return { success: false, message: msg };
     } finally {
       setLoading(false);
     }
@@ -46,7 +65,13 @@ export function AuthProvider({ children }) {
       await registerUser({ name, email, password });
       return { success: true };
     } catch (err) {
-      return { success: false, message: err.response?.data?.message || 'Registration failed' };
+      let msg = 'Registration failed';
+      if (!err.response) {
+        msg = 'Connection Error: Please check your internet or API URL.';
+      } else if (err.response.data && err.response.data.message) {
+        msg = err.response.data.message;
+      }
+      return { success: false, message: msg };
     } finally {
       setLoading(false);
     }

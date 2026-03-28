@@ -1,7 +1,13 @@
 import axios from 'axios';
 
+// Ensure VITE_API_URL is correctly formatted (no trailing slash)
+const getBaseURL = () => {
+  const url = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+  return url.endsWith('/') ? url.slice(0, -1) : url;
+};
+
 const API = axios.create({
-  baseURL: 'http://localhost:5000/api',
+  baseURL: getBaseURL(),
 });
 
 // Add auth token to every request
