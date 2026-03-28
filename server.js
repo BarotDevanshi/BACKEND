@@ -9,64 +9,60 @@ dotenv.config();
 // App init
 const app = express();
 
-// Middleware
-app.use(cors());
+// 🔹 Improved CORS for Mobile and Vercel
+app.use(cors({
+  origin: "*", 
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"]
+}));
+
 app.use(express.json()); // body parser
+
+// 🔹 Health Check / Diagnostics Route
+app.get("/api/health", async (req, res) => {
+  const dbStatus = mongoose.connection.readyState === 1 ? "Connected" : "Disconnected";
+  res.json({
+    status: "OK",
+    database: dbStatus,
+    serverTime: new Date().toISOString(),
+    environment: process.env.NODE_ENV || "development"
+  });
+});
 
 // Test route
 app.get("/", (req, res) => {
-res.send("API is running 🚀");
+  res.send("NeuroNexus API is running 🚀");
 });
 
-// MongoDB connection with better error handling
-console.log("MongoDB URI:", process.env.MONGO_URI || "NOT SET");
+// 🔹 Strict MongoDB connection
+if (!process.env.MONGO_URI) {
+  console.error("FATAL ERROR: MONGO_URI is not defined in environment variables.");
+  process.exit(1);
+}
 
 mongoose
-.connect(process.env.MONGO_URI)
-.then(() => {
+  .connect(process.env.MONGO_URI)
+  .then(() => {
     console.log("MongoDB Connected ✅");
-})
-.catch((err) => {
-    console.error("MongoDB Connection Error:", err.message);
-    // Continue running without DB for testing
-});
+  })
+  .catch((err) => {
+    console.error("❌ MongoDB Connection Error:", err.message);
+    // On Render, we want the build to fail if DB is not reachable
+    process.exit(1); 
+  });
 
 //-------->API ROUTES<--------//
-// Sample API route
-app.get("/api/test", (req, res) => {
-res.json({ message: "Test API working 💯" });
-});
-
-//auth api
-const authRoutes = require("./Routes/authRoutes");
-app.use("/api/auth", authRoutes);
-
-//mood API
-const moodRoutes = require("./Routes/moodRoutes");
-app.use("/api/moods", moodRoutes);
-
-//Task api
-const taskRoutes = require("./Routes/taskRoutes");
-app.use("/api/tasks", taskRoutes);
-
-//Sleep api
-const sleepRoutes = require("./Routes/sleepRoutes");
-app.use("/api/sleep", sleepRoutes);
-
-//activity api
-const activityRoutes = require("./Routes/activityRoutes");
-app.use("/api/activity", activityRoutes);
-
-//progress api
-const progressRoutes = require("./Routes/progressRoutes");
-app.use("/api/progress", progressRoutes);
-
+app.use("/api/auth", require("./Routes/authRoutes"));
+app.use("/api/moods", require("./Routes/moodRoutes"));
+app.use("/api/tasks", require("./Routes/taskRoutes"));
+app.use("/api/sleep", require("./Routes/sleepRoutes"));
+app.use("/api/activity", require("./Routes/activityRoutes"));
+app.use("/api/progress", require("./Routes/progressRoutes"));
 
 // Port setup
 const PORT = process.env.PORT || 5000;
 
 // Server start
 app.listen(PORT, () => {
-console.log(`Server running on port ${PORT} 🔥`);
+  console.log(`Server running on port ${PORT} 🔥`);
 });
-
