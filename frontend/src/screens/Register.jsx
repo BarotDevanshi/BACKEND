@@ -14,11 +14,12 @@ export default function Register() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    try {
-      await register(name, email, password);
+    const result = await register(name, email, password);
+    if (result.success) {
+      toast.success('Registration successful! Redirecting...');
       navigate('/');
-    } catch (err) {
-      toast.error('Registration failed. Try again.');
+    } else {
+      toast.error(result.message || 'Registration failed. Try again.');
     }
   };
 

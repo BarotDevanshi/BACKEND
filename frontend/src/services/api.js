@@ -2,7 +2,7 @@ import axios from 'axios';
 
 // Ensure VITE_API_URL is correctly formatted (no trailing slash)
 const getBaseURL = () => {
-  const url = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+  const url = (import.meta.env.VITE_API_URL || 'http://localhost:5000/api').trim();
   return url.endsWith('/') ? url.slice(0, -1) : url;
 };
 
