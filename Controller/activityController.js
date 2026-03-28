@@ -151,28 +151,59 @@ exports.chat = async (req, res) => {
             const songs = [
                 "If you need to focus, 'Lo-Fi Chillhop' on YouTube or Spotify is absolutely fantastic! 🎧",
                 "For a huge mood boost, try putting on your favorite upbeat Pop song and dancing for 2 minutes straight! 💃🎶",
-                "How about some calming acoustic guitar melodies to relax your mind? 🎸",
-                "Try listening to 'Weightless' by Marconi Union. It's scientifically proven to safely reduce anxiety! 🎵"
+                "How about some calming acoustic guitar melodies to relax your mind? 🎸"
             ];
             response = songs[Math.floor(Math.random() * songs.length)];
         }
-        else if (msg.includes("refresh my mood") || msg.includes("mood refreshment") || msg.includes("cheer me up") || msg.includes("boost my mood") || msg.includes("make me feel better")) {
-            const refreshers = [
-                "To instantly refresh your mood, try standing up, stretching your arms up high, and drinking a big, cool glass of water! 💧",
-                "Close your eyes and take 3 deep breaths. Imagine you are standing in a peaceful forest. 🌲 You've got this!",
-                "Try smiling for 60 seconds straight. Seriously! It actually tricks your brain into releasing dopamine! 😊",
-                "Go splash some cold water on your face—it resets your nervous system and is incredibly refreshing! 🧊"
-            ];
-            response = refreshers[Math.floor(Math.random() * refreshers.length)];
+        else if (msg.includes("improve my mood") || msg.includes("feel happy") || msg.includes("refresh my mood")) {
+            response = "To improve your mood quickly: stand up, stretch, drink water, and put on your favorite upbeat song! ☀️";
         }
-        else if (msg.includes("do my task") || msg.includes("what should i do") || msg.includes("give me a task") || msg.includes("my tasks") || msg.includes("should i work") || msg.includes("productive")) {
-            const tasks = [
-                "You should definitely check your Task Dumpyard and tackle whichever task looks the absolute easiest first! Building momentum is the key to success. 🚀",
-                "Have you tackled your top-priority task today? If not, let's knock it out right now! I completely believe in you. 💪",
-                "Try the 2-Minute Rule: if a task takes less than 2 minutes, go do it immediately right now! ⏱️",
-                "If you're feeling stuck, head over to the Games tab and play a quick round of Memory Match to wake up your brain before working! 🎮"
-            ];
-            response = tasks[Math.floor(Math.random() * tasks.length)];
+        else if (msg.includes("unmotivated") || msg.includes("procrastination") || msg.includes("lazy")) {
+            response = "Motivation often follows action, it doesn't precede it. Use the '5-Second Rule': count 5-4-3-2-1 and just start for 2 minutes! 🚀";
+        }
+        else if (msg.includes("angry") || msg.includes("calm down")) {
+            response = "Take a deep breath. Try the 4-7-8 method: Inhale for 4 seconds, hold for 7, and exhale slowly for 8. You are in control. 🌿";
+        }
+        else if (msg.includes("reduce anxiety")) {
+            response = "Grounding helps: Name 5 things you can see, 4 you can touch, 3 you can hear, 2 you can smell, and 1 you can taste. 💙";
+        }
+        else if (msg.includes("track my mood patterns") || msg.includes("mood radar mean")) {
+            response = "I track your moods! The mood radar visualizes your emotional trends so you can see what days you feel best. Check the Dashboard! 📊";
+        }
+        else if (msg.includes("dopamine")) {
+            response = "Dopamine is the brain's reward chemical. To increase it naturally: exercise, get morning sunlight, take cold showers, and check off small tasks! Avoid cheap dopamine like doomscrolling. 🧠";
+        }
+        else if (msg.includes("increase my streak")) {
+            response = "Your streak increases every single day you log into NeuroNexus. Consistency is key! 🔥";
+        }
+        else if (msg.includes("100% completion mean")) {
+            response = "It means you are an absolute rockstar and completed all your tasks for the day! 🌟";
+        }
+        else if (msg.includes("analyze my progress") || msg.includes("insights from my data") || msg.includes("improving or not") || msg.includes("weekly performance")) {
+            const todayTasks = await Task.find({ userId, status: "completed" });
+            const allMoods = await Mood.find({ userId });
+            response = `You've completed ${todayTasks.length} tasks and logged ${allMoods.length} total moods. Every step forward is progress! Keep building that momentum. 📈`;
+        }
+        else if (msg.includes("tasks faster") || msg.includes("focus") || msg.includes("break my task")) {
+            response = "To focus better: Break your task into 3 tiny chunks. Use the Pomodoro Technique (25m work, 5m rest). Put your phone in another room! ⏱️";
+        }
+        else if (msg.includes("suggest a plan") || msg.includes("routine") || msg.includes("healthy habits") || msg.includes("habits based on my mood")) {
+            response = "Daily Routine Recipe: 1. Hydrate first thing. 2. 10 mins of sunlight. 3. Tackle your hardest task first. 4. Wind down without screens an hour before bed. 📝";
+        }
+        else if (msg.includes("remind me to complete my tasks") || msg.includes("what should i do")) {
+            response = "This is your reminder! Head to the Task Dumpyard, pick the easiest task, and just knock it out. 🎯";
+        }
+        else if (msg.includes("addicted to my phone")) {
+            response = "Phones are engineered to be addictive via cheap dopamine. Try turning your screen to grayscale or leaving your phone in another room while working! 📱";
+        }
+        else if (msg.includes("consistent") || msg.includes("disciplined") || msg.includes("successful")) {
+            response = "Discipline is choosing what you want MOST over what you want NOW. Success is just showing up consistently, even on bad days. 💪";
+        }
+        else if (msg.includes("motivate me") || msg.includes("challenge") || msg.includes("lazy today")) {
+            response = "You didn't come this far to only come this far! Your challenge today: Work uninterrupted for 30 minutes straight. You can do it! 🔥";
+        }
+        else if (msg.includes("personalized advice")) {
+            response = "My advice for you: Don't overwhelm yourself. Pick just ONE non-negotiable task today and crush it. Everything else is a bonus! ✨";
         }
 
         // Task extraction logic fallback
@@ -238,32 +269,105 @@ exports.getRecommendation = async (req, res) => {
 
         let suggestion = "";
 
-        if (!mood && tasks.length === 0) {
-            suggestion = "Welcome! 😊 Please add your mood and a task first so I can give you personalized suggestions!";
-        }
-        else if (mood && mood.mood === "happy") {
-            const high = tasks.find(t => t.priority === "high") || tasks[0];
-            if (high) {
-                suggestion = `You're feeling happy! 😊 Use this amazing energy to tackle your priority task: "${high.title}". You've got this!`;
+        if (!mood || tasks.length === 0 || !sleep) {
+            suggestion = "Welcome! 😊 Please add your mood, a task, and your sleep first so I can give you personalized suggestions!";
+        } else {
+            const m = mood.mood.toLowerCase();
+            const s = sleep.duration;
+            const highTask = tasks.find(t => t.priority === "high");
+            const medTask = tasks.find(t => t.priority === "medium");
+            const anyTask = tasks[0];
+
+            let sleepLvl = "";
+            let sleepPrefix = "";
+            if (s < 5) {
+                sleepLvl = "low";
+                sleepPrefix = "sleep-deprived";
+            } else if (s >= 5 && s <= 7) {
+                sleepLvl = "average";
+                sleepPrefix = "average sleep";
+            } else if (s > 7 && s <= 9) {
+                sleepLvl = "good";
+                sleepPrefix = "well-rested";
             } else {
-                suggestion = "You're feeling great! 😊 Since you have no pending tasks, maybe learn something new today or plan your week ahead!";
+                sleepLvl = "overslept";
+                sleepPrefix = "overslept";
             }
-        }
-        else if (mood && mood.mood === "sad") {
-            suggestion = "I see you're feeling a bit down 💛. It's totally okay. Take a break to do your favorite work—listen to your favorite music 🎵, play a game 🎮, or try some meditation 🧘 to relax your mind.";
-        }
-        else if (mood && (mood.mood === "stressed" || mood.mood === "angry")) {
-            suggestion = "You seem a bit overwhelmed 😟. Step away for 5 minutes. Try deep breathing, listening to calming music, or just resting your eyes. Don't push yourself too hard right now.";
-        }
-        else if (sleep && sleep.duration < 5) {
-            suggestion = "You had low sleep last night 😴. \n• Suggestion: Stick to light, routine work today.\n• Avoid: Making big decisions or drinking too much caffeine late in the day.";
-        }
-        else {
-            const pending = tasks.length > 0 ? tasks[0] : null;
-            if (pending) {
-                suggestion = `A calm day is a productive day! 🌿 Why not start with your task: "${pending.title}"? Just 5 minutes is all it takes to build momentum.`;
+
+            const tName = highTask ? `"${highTask.title}"` : (medTask ? `"${medTask.title}"` : (anyTask ? `"${anyTask.title}"` : "your pending tasks"));
+            
+            const randomPick = (arr) => arr[Math.floor(Math.random() * arr.length)];
+
+            if (m === "happy" || m === "excited") {
+                if (sleepLvl === "good") {
+                    suggestion = randomPick([
+                        `You're beaming with positive energy and you're well-rested! ⚡\nThis is the absolute perfect time to tackle ${tName}. Let's make some huge progress today! 🎯`,
+                        `Great mood + great sleep = unstoppable! 🔥\nChannel this fantastic energy directly into ${tName}. You're going to crush it today! 🚀`,
+                        `I can feel your great energy! 🌟 Since your sleep was solid, let's ride this wave and knock out ${tName}. You've got this! 💪`
+                    ]);
+                } else if (sleepLvl === "low") {
+                    suggestion = randomPick([
+                        `You're feeling really good, but you're running on low sleep ⚡\nTry focusing on ${tName}, but please don't overwork yourself. Try to sleep a bit earlier tonight! 🛌`,
+                        `Your mood is amazing, but your battery might quietly drop later due to lack of sleep! 🔋\nTackle ${tName} now while you feel fresh, then take an early break! ✨`
+                    ]);
+                } else if (sleepLvl === "overslept") {
+                    suggestion = randomPick([
+                        `You're in a great mood but maybe a bit groggy from oversleeping! 😅\nShake it off, drink some water, and dive straight into ${tName}. Let's get active! 🚀`,
+                        `Happy but overslept? Sometimes too much rest makes us lazy. 🛋️\nUse your good mood to break the inertia! Start with just 10 minutes of ${tName}. You got this! 💥`
+                    ]);
+                } else {
+                    suggestion = randomPick([
+                        `You're feeling happy with an okay amount of sleep! ⚡\nUse this bright energy to smoothly tackle ${tName}. Keep the momentum going! 🎯`,
+                        `Positivity is a superpower! 🦸‍♂️ With decent sleep behind you, it's a great day to knock out ${tName}. Let's make it a productive day! ✨`
+                    ]);
+                }
+            } 
+            else if (m === "sad" || m === "lonely") {
+                if (sleepLvl === "low") {
+                    suggestion = randomPick([
+                        `I notice you're feeling down, and you barely slept. That's a tough combination. 💛\nPlease skip the heavy lifting today. Try doing something comforting and take a long nap. You deserve rest. 😌`,
+                        `Your system is depleted today, physically and emotionally. 🥺\nI strongly suggest taking a break from heavy tasks like ${tName}. Watch a comforts show, listen to relaxing music, or simply sleep. 🛌`
+                    ]);
+                } else {
+                    suggestion = randomPick([
+                        `I'm sorry you're feeling a bit heavy today. 💛\nDon't force yourself too hard. If you feel up to it, try working lightly on ${tName}, or simply take the day to recover and do what makes you smile. 🎵`,
+                        `It's completely okay to have down days. 🌧️\nIf ${tName} feels like too much, break it into tiny pieces. Otherwise, just listen to some comforting music and take it easy. I'm rooting for you! 🫂`
+                    ]);
+                }
+            }
+            else if (m === "calm" || m === "neutral") {
+                if (sleepLvl === "average" || sleepLvl === "good") {
+                    suggestion = randomPick([
+                        `You're in a perfectly steady, balanced state! 🌿\nIt's a fantastic day for deep focus. Let's peacefully tackle ${tName} and maybe enjoy a cup of tea. 🍵`,
+                        `Calm minds get the most done. 🧘‍♂️\nSince you're reasonably rested, you can definitely make steady progress on ${tName} today without feeling overwhelmed. ⚖️`,
+                        `Neutral days are the secret engine of productivity! ⚙️\nWith your solid sleep, just sit down, play some focus music, and slowly work through ${tName}. You'll be amazed at what you finish! 🎯`
+                    ]);
+                } else {
+                    suggestion = randomPick([
+                        `You're feeling calm, but your lack of sleep might catch up to you. 🌿\nKeep things steady. Try light productivity on ${tName}, but step away if you feel your brain fogging up. ☕`,
+                        `A peaceful mind but a tired body. ☁️\nDo what you can with ${tName}, but don't hesitate to take a 20-minute power nap to recharge your battery! 🔋`
+                    ]);
+                }
+            }
+            else if (m === "stressed" || m === "angry" || m === "frustrated") {
+                if (sleepLvl === "low") {
+                    suggestion = randomPick([
+                        `You're highly stressed and sleep-deprived. Your brain is running on fumes! 😟\nPlease pause. Step away from ${tName}. Do a 5-minute breathing exercise, drink a glass of water, and seriously prioritize rest today. ✨`,
+                        `Lack of sleep heavily amplifies stress! 🚨\nDo not try to force your way through ${tName} right now. Your only priority should be unwinding, drinking water, and getting a good night's sleep. 🌙`
+                    ]);
+                } else {
+                    suggestion = randomPick([
+                        `You seem tense right now. 😟\nWhen you're overwhelmed, the best thing is to do less. Focus ONLY on one tiny step of ${tName}. If it's too much, step completely away for 15 minutes. 💙`,
+                        `Take a deep breath. 🌬️ Stress makes everything harder.\nHow about trying the Pomodoro method? Just 20 minutes on ${tName}, then a strict 5-minute break. You are in control! 🧘‍♀️`,
+                        `I can feel your frustration. 😤 Let's channel that energy!\nSometimes writing out what's bothering you helps. Once you cool down, see if you can lightly begin on ${tName}. No pressure! 🌿`
+                    ]);
+                }
             } else {
-                suggestion = "All tasks are done! 🎉 Enjoy your free time guilt-free, read a book, or add new goals to your Dumpyard!";
+                suggestion = randomPick([
+                    `You're doing great! 🌟 With ${sleepPrefix}, let's keep the momentum going on ${tName}.`,
+                    `Checking in! You're ${sleepPrefix} today. Let's see if we can make a dent in ${tName}! 🚀`,
+                    `Hello! 🤖 Your AI assistant is here. Based on your recent ${sleepPrefix}, I highly recommend taking a look at ${tName} when you're ready! ✨`
+                ]);
             }
         }
 
@@ -271,7 +375,7 @@ exports.getRecommendation = async (req, res) => {
         await Activity.create({
             userId,
             type: "recommendation",
-            message: `Mood: ${mood?.mood}`,
+            message: `Mood: ${mood?.mood}, Sleep: ${sleep?.duration}h`,
             response: suggestion
         });
 
@@ -281,8 +385,6 @@ exports.getRecommendation = async (req, res) => {
         res.status(500).json({ error: err.message });
     }
 };
-
-
 
 // 📥 CHAT HISTORY
 exports.getChatHistory = async (req, res) => {

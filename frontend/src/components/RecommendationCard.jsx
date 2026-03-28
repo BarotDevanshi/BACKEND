@@ -7,76 +7,239 @@ export default function RecommendationCard() {
   const [suggestion, setSuggestion] = useState('');
   const [loading, setLoading] = useState(false);
 
+  const defaultMessage = 'Welcome! 😊 Please add your mood, a task, and your sleep first so I can give you personalized suggestions!';
+
   const fetchSuggestion = async () => {
     setLoading(true);
     try {
       const res = await getRecommendation();
-      setSuggestion(res.data.suggestion);
+      if (res.data.suggestion) {
+        setSuggestion(res.data.suggestion);
+      } else {
+        setSuggestion(defaultMessage);
+      }
     } catch {
-      setSuggestion('Log your mood first to get smart suggestions! 🧠');
+      setSuggestion(defaultMessage);
     }
     setLoading(false);
   };
 
   useEffect(() => {
     fetchSuggestion();
+
+    // Listen for data updates to fetch suggestion in real time
+    const handleUpdate = () => fetchSuggestion();
+    window.addEventListener('dashboardDataChanged', handleUpdate);
+    return () => window.removeEventListener('dashboardDataChanged', handleUpdate);
   }, []);
 
   return (
-    <div style={{ padding: '0 16px', marginBottom: '20px' }}>
+    <div style={{ padding: '0 16px', marginBottom: '30px', display: 'flex', justifyContent: 'center' }}>
       <div 
+        className="ai-recommendation-glass"
         style={{
-          background: 'linear-gradient(135deg, #016443, #06c585)', // Green gradient
-          borderRadius: '20px',
-          padding: '20px',
-          color: 'white',
-          boxShadow: '0 10px 25px rgba(236, 72, 153, 0.2)',
+          width: '100%',
+          maxWidth: '800px',
+          background: 'linear-gradient(135deg, rgba(6, 197, 133, 0.15) 0%, rgba(1, 100, 67, 0.05) 100%)',
+          backdropFilter: 'blur(12px)',
+          WebkitBackdropFilter: 'blur(12px)',
+          border: '1px solid rgba(6, 197, 133, 0.2)',
+          borderRadius: '24px',
+          padding: '28px',
+          color: 'var(--text-primary)',
+          boxShadow: '0 8px 32px rgba(6, 197, 133, 0.1), inset 0 0 20px rgba(255, 255, 255, 0.5)',
           display: 'flex',
           flexDirection: 'column',
-          gap: '16px'
+          gap: '20px',
+          position: 'relative',
+          overflow: 'hidden',
+          transition: 'transform 0.3s ease, box-shadow 0.3s ease'
         }}
       >
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '1.2rem', fontWeight: 'bold' }}>
-            <HiSparkles size={22} />
-            AI Suggestion
+        {/* Animated Glow behind the glass */}
+        <div 
+          style={{
+            position: 'absolute',
+            top: '-50px',
+            right: '-50px',
+            width: '200px',
+            height: '200px',
+            background: 'radial-gradient(circle, rgba(6, 197, 133, 0.25) 0%, rgba(0,0,0,0) 70%)',
+            filter: 'blur(40px)',
+            borderRadius: '50%',
+            animation: 'aiPulseGlow 4s infinite alternate',
+            zIndex: 0,
+            pointerEvents: 'none'
+          }}
+        />
+
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'relative', zIndex: 1 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '1.35rem', fontWeight: '800', letterSpacing: '-0.5px' }}>
+            <div style={{
+              background: 'linear-gradient(135deg, #016443, #06c585)',
+              padding: '8px',
+              borderRadius: '12px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              boxShadow: '0 4px 15px rgba(6, 197, 133, 0.4)'
+            }}>
+              <HiSparkles size={22} color="white" />
+            </div>
+            <span style={{ 
+              background: 'linear-gradient(135deg, #016443, #06c585)', 
+              WebkitBackgroundClip: 'text', 
+              WebkitTextFillColor: 'transparent',
+              textShadow: '0px 2px 10px rgba(6, 197, 133, 0.1)'
+            }}>
+              AI Insight
+            </span>
           </div>
           <button 
             onClick={fetchSuggestion} 
             disabled={loading}
             style={{ 
-              background: 'transparent', 
-              color: 'white', 
-              padding: '4px', 
+              background: 'white',
+              border: '1px solid rgba(6, 197, 133, 0.2)',
+              borderRadius: '50%',
+              color: '#06c585', 
+              width: '40px',
+              height: '40px',
               display: 'flex', 
               alignItems: 'center', 
+              justifyContent: 'center',
               cursor: loading ? 'not-allowed' : 'pointer',
-              opacity: loading ? 0.5 : 1
+              opacity: loading ? 0.6 : 1,
+              transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+              boxShadow: '0 4px 12px rgba(6, 197, 133, 0.15)'
+            }}
+            onMouseOver={(e) => {
+              if(!loading) {
+                e.currentTarget.style.transform = 'rotate(15deg) scale(1.1)';
+                e.currentTarget.style.boxShadow = '0 6px 16px rgba(6, 197, 133, 0.25)';
+              }
+            }}
+            onMouseOut={(e) => {
+              if(!loading) {
+                e.currentTarget.style.transform = 'rotate(0deg) scale(1)';
+                e.currentTarget.style.boxShadow = '0 4px 12px rgba(6, 197, 133, 0.15)';
+              }
             }}
           >
-            <FiRefreshCw size={18} className={loading ? 'spinning' : ''} />
+            <FiRefreshCw size={18} className={loading ? 'spinning' : ''} style={{ strokeWidth: '2.5' }} />
           </button>
         </div>
 
         <div 
           style={{
-            background: 'rgba(255, 255, 255, 0.15)',
-            borderRadius: '12px',
-            padding: '16px',
-            fontSize: '0.95rem',
-            lineHeight: '1.5',
-            minHeight: '60px',
+            background: 'rgba(255, 255, 255, 0.6)',
+            border: '1px solid rgba(255, 255, 255, 0.8)',
+            borderRadius: '16px',
+            padding: '24px',
+            fontSize: '1.05rem',
+            lineHeight: '1.7',
+            minHeight: '100px',
             display: 'flex',
-            alignItems: 'center'
+            alignItems: 'center',
+            position: 'relative',
+            zIndex: 1,
+            boxShadow: '0 4px 20px rgba(0,0,0,0.03)',
+            backdropFilter: 'blur(8px)',
+            color: 'var(--text-primary)',
+            fontWeight: '500'
           }}
         >
-          {loading ? 'Analyzing your day...' : <div style={{ display: 'flex', gap: '10px' }}>{suggestion}</div>}
+          {loading ? (
+            <div style={{ display: 'flex', gap: '12px', alignItems: 'center', width: '100%', justifyContent: 'center', color: '#06c585', fontWeight: '600' }}>
+              <div className="ai-dot-flashing"></div>
+              <span>Crafting your personalized insight...</span>
+            </div>
+          ) : (
+            <div style={{ 
+              display: 'flex', 
+              gap: '10px', 
+              letterSpacing: '0.2px', 
+              whiteSpace: 'pre-line',
+              width: '100%'
+            }}>
+              {suggestion}
+            </div>
+          )}
         </div>
       </div>
 
       <style>{`
         @keyframes spin { 100% { transform: rotate(360deg); } }
         .spinning { animation: spin 1s linear infinite; }
+        
+        @keyframes aiPulseGlow {
+          0% { transform: scale(0.8) translate(0, 0); opacity: 0.5; }
+          100% { transform: scale(1.2) translate(-20px, 20px); opacity: 0.9; }
+        }
+
+        .ai-recommendation-glass:hover {
+          transform: translateY(-4px);
+          box-shadow: 0 12px 40px rgba(6, 197, 133, 0.15), inset 0 0 20px rgba(255, 255, 255, 0.6) !important;
+        }
+
+        [data-theme="dark"] .ai-recommendation-glass {
+          background: linear-gradient(135deg, rgba(6, 197, 133, 0.1) 0%, rgba(0, 0, 0, 0.4) 100%) !important;
+          border-color: rgba(6, 197, 133, 0.15) !important;
+          box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5), inset 0 0 20px rgba(6, 197, 133, 0.05) !important;
+        }
+
+        [data-theme="dark"] .ai-recommendation-glass > div:nth-child(3) {
+          background: rgba(30, 41, 59, 0.6) !important;
+          border-color: rgba(255, 255, 255, 0.05) !important;
+        }
+
+        [data-theme="dark"] .ai-recommendation-glass button {
+          background: #1e293b !important;
+          border-color: rgba(6, 197, 133, 0.2) !important;
+        }
+
+        .ai-dot-flashing {
+          position: relative;
+          width: 8px;
+          height: 8px;
+          border-radius: 5px;
+          background-color: #06c585;
+          color: #06c585;
+          animation: ai-dot-flashing 1s infinite linear alternate;
+          animation-delay: 0.5s;
+          margin-right: 15px;
+          margin-left: 5px;
+        }
+        .ai-dot-flashing::before, .ai-dot-flashing::after {
+          content: '';
+          display: inline-block;
+          position: absolute;
+          top: 0;
+        }
+        .ai-dot-flashing::before {
+          left: -12px;
+          width: 8px;
+          height: 8px;
+          border-radius: 5px;
+          background-color: #06c585;
+          color: #06c585;
+          animation: ai-dot-flashing 1s infinite alternate;
+          animation-delay: 0s;
+        }
+        .ai-dot-flashing::after {
+          left: 12px;
+          width: 8px;
+          height: 8px;
+          border-radius: 5px;
+          background-color: #06c585;
+          color: #06c585;
+          animation: ai-dot-flashing 1s infinite alternate;
+          animation-delay: 1s;
+        }
+        @keyframes ai-dot-flashing {
+          0% { background-color: #06c585; }
+          50%, 100% { background-color: rgba(6, 197, 133, 0.2); }
+        }
       `}</style>
     </div>
   );

@@ -17,6 +17,8 @@ export default function MoodCard() {
     try {
       await saveMood({ mood: moodValue, note: "" });
       toast.success(`Feeling ${label} today. Checked in!`);
+      // Notify other components (like RecommendationCard) to update
+      window.dispatchEvent(new Event('dashboardDataChanged'));
     } catch {}
   };
 

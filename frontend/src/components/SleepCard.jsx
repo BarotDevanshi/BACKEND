@@ -67,6 +67,7 @@ export default function SleepCard() {
         quality
       });
       toast.success('Sleep tracked successfully! 💤');
+      window.dispatchEvent(new Event('dashboardDataChanged'));
     } catch (e) {
       toast.error('Failed to save sleep data.');
     }

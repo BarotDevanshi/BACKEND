@@ -23,7 +23,7 @@ const sleepSchema = new mongoose.Schema({
 
     quality: {
         type: String,
-        enum: ["good", "average", "poor"]
+        enum: ["good", "average", "poor", "extreme"]
     }
 
 }, { timestamps: true });

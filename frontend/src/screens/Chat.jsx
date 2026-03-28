@@ -3,6 +3,14 @@ import { getChatHistory, sendChat } from '../services/api';
 import { BiBot } from 'react-icons/bi';
 import { FiSend } from 'react-icons/fi';
 
+// Exactly 4 predefined quick questions shown above the input
+const QUICK_QUESTIONS = [
+  "How can I improve my mood?",
+  "Suggest a plan for today",
+  "Motivate me to work",
+  "Analyze my progress",
+];
+
 export default function Chat() {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
@@ -18,32 +26,61 @@ export default function Chat() {
   }, [messages]);
 
   const loadChat = async () => {
-    // Starting fresh every time the component opens as requested
     setMessages([
-      { role: 'ai', text: 'Hi! I am your NeuroNexus assistant. How can I help you?', time: new Date().toLocaleTimeString([], {timeStyle: 'short'}) }
+      {
+        role: 'ai',
+        text: 'Hi! I am your NeuroNexus assistant. How can I help you?',
+        time: new Date().toLocaleTimeString([], { timeStyle: 'short' }),
+      },
     ]);
   };
 
-  const handleSend = async (e) => {
-    e.preventDefault();
-    if (!input.trim()) return;
+  const sendMessage = async (text) => {
+    if (!text.trim()) return;
 
-    const userMsg = input;
-    const time = new Date().toLocaleTimeString([], {timeStyle: 'short'});
+    const userMsg = text;
+    const time = new Date().toLocaleTimeString([], { timeStyle: 'short' });
+    setMessages((prev) => [...prev, { role: 'user', text: userMsg, time }]);
     setInput('');
-    setMessages(prev => [...prev, { role: 'user', text: userMsg, time }]);
     setLoading(true);
 
     try {
       const { data } = await sendChat({ message: userMsg });
-      setMessages(prev => [...prev, { role: 'ai', text: data.response, time: new Date().toLocaleTimeString([], {timeStyle: 'short'}) }]);
-    } catch {}
+      if (data && data.response) {
+        setMessages((prev) => [
+          ...prev,
+          {
+            role: 'ai',
+            text: data.response,
+            time: new Date().toLocaleTimeString([], { timeStyle: 'short' }),
+          },
+        ]);
+      }
+    } catch (err) {
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: 'ai',
+          text: 'Sorry, I could not connect. Please try again! 💙',
+          time: new Date().toLocaleTimeString([], { timeStyle: 'short' }),
+        },
+      ]);
+    }
     setLoading(false);
   };
 
+  const handleSend = (e) => {
+    e.preventDefault();
+    sendMessage(input);
+  };
+
   return (
-    <div style={{ paddingBottom: '70px' }}>
-      <div className="gradient-header" style={{ marginBottom: 0, borderBottomLeftRadius: 0, borderBottomRightRadius: 0 }}>
+    <div style={{ paddingBottom: '190px' }}>
+      {/* Header */}
+      <div
+        className="gradient-header"
+        style={{ marginBottom: 0, borderBottomLeftRadius: 0, borderBottomRightRadius: 0 }}
+      >
         <h1>
           <BiBot />
           AI Assistant
@@ -51,28 +88,111 @@ export default function Chat() {
         <p>Always here to help ☁️</p>
       </div>
 
+      {/* Chat Messages */}
       <div style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
         {messages.map((msg, idx) => (
           <div key={idx} className={`chat-bubble ${msg.role === 'user' ? 'right' : 'left'}`}>
             {msg.role === 'ai' && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px', color: 'var(--primary-color)', fontWeight: 'bold' }}>
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  marginBottom: '4px',
+                  color: 'var(--primary-color)',
+                  fontWeight: 'bold',
+                }}
+              >
                 <BiBot size={18} /> NeuroNexus
               </div>
             )}
             <div style={{ whiteSpace: 'pre-line' }}>{msg.text}</div>
-            <div style={{ fontSize: '0.75rem', marginTop: '6px', opacity: 0.7, textAlign: msg.role === 'user' ? 'right' : 'left' }}>
+            <div
+              style={{
+                fontSize: '0.75rem',
+                marginTop: '6px',
+                opacity: 0.7,
+                textAlign: msg.role === 'user' ? 'right' : 'left',
+              }}
+            >
               {msg.time}
             </div>
           </div>
         ))}
+
         {loading && (
           <div className="chat-bubble left">
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                color: 'var(--primary-color)',
+                fontWeight: 'bold',
+                marginBottom: '4px',
+              }}
+            >
+              <BiBot size={18} /> NeuroNexus
+            </div>
             Typing...
           </div>
         )}
         <div ref={bottomRef} />
       </div>
 
+      {/* ── 3 Predefined Quick Questions — fixed strictly above input bar ── */}
+      <div
+        style={{
+          position: 'fixed',
+          bottom: '148px',
+          left: 0,
+          right: 0,
+          maxWidth: '600px',
+          margin: '0 auto',
+          display: 'flex',
+          flexWrap: 'wrap',
+          justifyContent: 'center',
+          gap: '8px',
+          padding: '10px 16px',
+          background: 'var(--bg-primary)',
+          borderTop: '1px solid var(--border)',
+          zIndex: 999
+        }}
+      >
+        {QUICK_QUESTIONS.map((q, idx) => (
+          <button
+            key={idx}
+            type="button"
+            onClick={() => sendMessage(q)}
+            style={{
+              padding: '8px 16px',
+              borderRadius: '20px',
+              border: '1.5px solid var(--primary-color)',
+              background: 'transparent',
+              color: 'var(--primary-color)',
+              fontSize: '0.82rem',
+              fontWeight: '600',
+              cursor: 'pointer',
+              flexShrink: 0,
+              whiteSpace: 'normal',
+              textAlign: 'center',
+              transition: 'all 0.2s',
+            }}
+            onMouseOver={(e) => {
+              e.currentTarget.style.background = 'var(--primary-color)';
+              e.currentTarget.style.color = 'white';
+            }}
+            onMouseOut={(e) => {
+              e.currentTarget.style.background = 'transparent';
+              e.currentTarget.style.color = 'var(--primary-color)';
+            }}
+          >
+            {q}
+          </button>
+        ))}
+      </div>
+
+      {/* Input Bar — fixed at bottom above nav */}
       <form className="chat-input-container" onSubmit={handleSend}>
         <input
           type="text"

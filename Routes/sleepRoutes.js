@@ -27,7 +27,7 @@ router.post(
     [
         body("sleepTime").isISO8601().withMessage("Invalid sleep time"),
         body("wakeTime").isISO8601().withMessage("Invalid wake time"),
-        body("quality").optional().isIn(["good", "average", "poor"]).withMessage("Invalid quality")
+        body("quality").optional().isIn(["good", "average", "poor", "extreme"]).withMessage("Invalid quality")
     ],
     handleValidationErrors,
     addSleep
@@ -43,7 +43,7 @@ router.put(
     [
         body("sleepTime").optional().isISO8601().withMessage("Invalid sleep time"),
         body("wakeTime").optional().isISO8601().withMessage("Invalid wake time"),
-        body("quality").optional().isIn(["good", "average", "poor"]).withMessage("Invalid quality")
+        body("quality").optional().isIn(["good", "average", "poor", "extreme"]).withMessage("Invalid quality")
     ],
     handleValidationErrors,
     updateSleep
