@@ -22,6 +22,16 @@ export default function Chat() {
   }, []);
 
   useEffect(() => {
+    // Prevent the main app container from scrolling while in Chat
+    const parent = document.querySelector('.app-content');
+    if (parent) {
+      const originalOverflow = parent.style.overflow;
+      parent.style.overflow = 'hidden';
+      return () => { parent.style.overflow = originalOverflow; };
+    }
+  }, []);
+
+  useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
@@ -75,11 +85,11 @@ export default function Chat() {
   };
 
   return (
-    <div style={{ paddingBottom: '190px' }}>
-      {/* Header */}
+    <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+      {/* Header — Fixed at top of flex */}
       <div
         className="gradient-header"
-        style={{ marginBottom: 0, borderBottomLeftRadius: 0, borderBottomRightRadius: 0 }}
+        style={{ marginBottom: 0, borderBottomLeftRadius: 0, borderBottomRightRadius: 0, flexShrink: 0 }}
       >
         <h1>
           <BiBot />
@@ -88,8 +98,8 @@ export default function Chat() {
         <p>Always here to help ☁️</p>
       </div>
 
-      {/* Chat Messages */}
-      <div style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+      {/* Chat Messages — Scrollable area */}
+      <div style={{ flex: 1, overflowY: 'auto', padding: '20px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
         {messages.map((msg, idx) => (
           <div key={idx} className={`chat-bubble ${msg.role === 'user' ? 'right' : 'left'}`}>
             {msg.role === 'ai' && (
@@ -140,71 +150,92 @@ export default function Chat() {
         <div ref={bottomRef} />
       </div>
 
-      {/* ── 3 Predefined Quick Questions — fixed strictly above input bar ── */}
+      {/* ── Footer Section — Chips + Input ───────────────────────────── */}
       <div
         style={{
-          position: 'fixed',
-          bottom: '148px',
-          left: 0,
-          right: 0,
-          maxWidth: '600px',
+          maxWidth: '850px',
+          width: '100%',
           margin: '0 auto',
-          display: 'flex',
-          flexWrap: 'wrap',
-          justifyContent: 'center',
-          gap: '8px',
-          padding: '10px 16px',
-          background: 'var(--bg-primary)',
-          borderTop: '1px solid var(--border)',
-          zIndex: 999
+          padding: '0 16px',
+          zIndex: 999,
+          flexShrink: 0,
+          background: 'var(--bg-primary)'
         }}
       >
-        {QUICK_QUESTIONS.map((q, idx) => (
-          <button
-            key={idx}
-            type="button"
-            onClick={() => sendMessage(q)}
-            style={{
-              padding: '8px 16px',
-              borderRadius: '20px',
-              border: '1.5px solid var(--primary-color)',
-              background: 'transparent',
-              color: 'var(--primary-color)',
-              fontSize: '0.82rem',
-              fontWeight: '600',
-              cursor: 'pointer',
-              flexShrink: 0,
-              whiteSpace: 'normal',
-              textAlign: 'center',
-              transition: 'all 0.2s',
-            }}
-            onMouseOver={(e) => {
-              e.currentTarget.style.background = 'var(--primary-color)';
-              e.currentTarget.style.color = 'white';
-            }}
-            onMouseOut={(e) => {
-              e.currentTarget.style.background = 'transparent';
-              e.currentTarget.style.color = 'var(--primary-color)';
-            }}
-          >
-            {q}
-          </button>
-        ))}
-      </div>
+        {/* Quick Questions Chips */}
+        <div
+          style={{
+            display: 'flex',
+            flexWrap: 'wrap',
+            justifyContent: 'center',
+            gap: '8px',
+            padding: '12px 0',
+            background: 'var(--bg-primary)',
+            borderTop: '1px solid var(--border)',
+            borderTopLeftRadius: '20px',
+            borderTopRightRadius: '20px',
+            boxShadow: '0 -4px 12px rgba(0,0,0,0.05)'
+          }}
+        >
+          {QUICK_QUESTIONS.map((q, idx) => (
+            <button
+              key={idx}
+              type="button"
+              onClick={() => sendMessage(q)}
+              style={{
+                padding: '8px 16px',
+                borderRadius: '20px',
+                border: '1.5px solid var(--primary-color)',
+                background: 'transparent',
+                color: 'var(--primary-color)',
+                fontSize: '0.82rem',
+                fontWeight: '600',
+                cursor: 'pointer',
+                flexShrink: 0,
+                whiteSpace: 'normal',
+                textAlign: 'center',
+                transition: 'all 0.2s',
+              }}
+              onMouseOver={(e) => {
+                e.currentTarget.style.background = 'var(--primary-color)';
+                e.currentTarget.style.color = 'white';
+              }}
+              onMouseOut={(e) => {
+                e.currentTarget.style.background = 'transparent';
+                e.currentTarget.style.color = 'var(--primary-color)';
+              }}
+            >
+              {q}
+            </button>
+          ))}
+        </div>
 
-      {/* Input Bar — fixed at bottom above nav */}
-      <form className="chat-input-container" onSubmit={handleSend}>
-        <input
-          type="text"
-          className="chat-input"
-          placeholder="Type your message..."
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-        />
-        <button type="submit" className="chat-send-btn" disabled={!input.trim()}>
-          <FiSend />
-        </button>
-      </form>
+        {/* Input Bar — Attached below chips */}
+        <form 
+          className="chat-input-container" 
+          onSubmit={handleSend}
+          style={{
+            position: 'static', // override fixed in CSS to flow with footer
+            maxWidth: 'none',
+            padding: '10px 0 20px',
+            background: 'var(--bg-primary)',
+            borderBottomLeftRadius: '20px',
+            borderBottomRightRadius: '20px',
+            boxShadow: '0 4px 12px rgba(0,0,0,0.05)'
+          }}
+        >
+          <input
+            type="text"
+            className="chat-input"
+            placeholder="Type your message..."
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+          />
+          <button type="submit" className="chat-send-btn" disabled={!input.trim()}>
+            <FiSend />
+          </button>
+        </form>
+      </div>
     </div>
   );
 }

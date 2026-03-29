@@ -10,35 +10,35 @@ import { getMoods, getTasks, getSleep, logAppOpen } from '../services/api';
 
 export default function Home() {
   const { user } = useAuth();
-  const userName = localStorage.getItem('nn-displayName') || user?.name || 'Demo';
+  const userName = user?.name || localStorage.getItem('nn-displayName') || 'User';
   const [stats, setStats] = useState({ mood: '...', tasks: '...', sleep: '...' });
 
   useEffect(() => {
     async function loadStats() {
       try {
         const [mReq, tReq, sReq] = await Promise.all([getMoods(), getTasks(), getSleep()]);
-        
+
         const latestMood = mReq.data.data?.[0]?.mood || 'None';
         const pendingTasks = (tReq.data.data || []).filter(t => !t.completed).length;
-        
+
         let sleepStr = 'No data';
         const sleeps = sReq.data.data || [];
         if (sleeps.length > 0) {
-           const latest = sleeps[0];
-           if (latest.sleepTime && latest.wakeTime) {
-             const st = new Date(latest.sleepTime);
-             const wt = new Date(latest.wakeTime);
-             let diff = (wt - st) / (1000 * 60);
-             if (diff < 0) diff += 24 * 60;
-             const h = Math.floor(diff / 60);
-             sleepStr = `${h}h logged`;
-           }
+          const latest = sleeps[0];
+          if (latest.sleepTime && latest.wakeTime) {
+            const st = new Date(latest.sleepTime);
+            const wt = new Date(latest.wakeTime);
+            let diff = (wt - st) / (1000 * 60);
+            if (diff < 0) diff += 24 * 60;
+            const h = Math.floor(diff / 60);
+            sleepStr = `${h}h logged`;
+          }
         }
 
-        setStats({ 
-          mood: latestMood.charAt(0).toUpperCase() + latestMood.slice(1), 
-          tasks: `${pendingTasks} left`, 
-          sleep: sleepStr 
+        setStats({
+          mood: latestMood.charAt(0).toUpperCase() + latestMood.slice(1),
+          tasks: `${pendingTasks} left`,
+          sleep: sleepStr
         });
       } catch (e) {
         console.error('Failed to load stats', e);
@@ -46,13 +46,13 @@ export default function Home() {
     }
     loadStats();
     // Log daily app open for streak (no-op if already called today)
-    logAppOpen().catch(() => {});
+    logAppOpen().catch(() => { });
   }, []);
 
   const quickNav = [
-    { id: 'mood-card', label: 'Mood', icon: <FiSmile size={20}/>, color: '#179044', val: stats.mood },
-    { id: 'task-card', label: 'Tasks', icon: <FiCheckSquare size={20}/>, color: '#179044', val: stats.tasks },
-    { id: 'sleep-card', label: 'Sleep', icon: <FiMoon size={20}/>, color: '#179044', val: stats.sleep },
+    { id: 'mood-card', label: 'Mood', icon: <FiSmile size={20} />, color: '#179044', val: stats.mood },
+    { id: 'task-card', label: 'Tasks', icon: <FiCheckSquare size={20} />, color: '#179044', val: stats.tasks },
+    { id: 'sleep-card', label: 'Sleep', icon: <FiMoon size={20} />, color: '#179044', val: stats.sleep },
   ];
 
   const scrollTo = (id) => {
@@ -79,10 +79,10 @@ export default function Home() {
         <h3 style={{ fontSize: '1.05rem', fontWeight: 800, marginBottom: '16px', color: 'var(--text-primary)' }}>Overview</h3>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px' }}>
           {quickNav.map(n => (
-            <div 
-              key={n.id} 
+            <div
+              key={n.id}
               onClick={() => scrollTo(n.id)}
-              style={{ 
+              style={{
                 background: 'rgba(255, 255, 255, 0.4)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)',
                 borderRadius: '20px', padding: '16px 12px',
                 border: '1px solid rgba(255, 255, 255, 0.8)',

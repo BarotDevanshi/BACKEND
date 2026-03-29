@@ -173,6 +173,9 @@ export default function Dashboard() {
     });
   }, [moods, tasks]);
 
+  // Use the live value from the dopamine simulation
+  const dopamine = dopamineSimData.length > 0 ? dopamineSimData[dopamineSimData.length - 1].value : 50;
+
   const dopamineGradPlugin = useMemo(() => ({
     id: 'dopamineGrad',
     beforeDatasetsDraw(chart) {
@@ -186,104 +189,119 @@ export default function Dashboard() {
     },
   }), []);
 
-  if (loading) return <div className="loading-spinner" style={{ marginTop: '40px' }}></div>;
 
-  const completedTasks = tasks.filter(t => t.status === 'completed').length;
-  const pendingTasks = tasks.filter(t => t.status === 'pending').length;
-  const totalTasks = tasks.length;
-  const completionRate = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
-  
-  // Use the live value from the dopamine simulation
-  const dopamine = dopamineSimData.length > 0 ? dopamineSimData[dopamineSimData.length - 1].value : 50;
+  // ── Stats Calculations ──────────────────────────────────────────────────
+  const stats = useMemo(() => {
+    const completed = tasks.filter(t => t.status === 'completed').length;
+    const total = tasks.length;
+    const rate = total > 0 ? Math.round((completed / total) * 100) : 0;
+    return { completed, total, rate };
+  }, [tasks]);
 
-  // ── Monthly Heatmap ──────────────────────────────────────────────────────
   const today = new Date();
   const daysInMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
   const firstDay = new Date(today.getFullYear(), today.getMonth(), 1).getDay();
 
-  const moodByDay = {};
-  moods.forEach(m => {
-    const d = new Date(m.createdAt);
-    if (d.getMonth() === today.getMonth() && d.getFullYear() === today.getFullYear()) {
-      moodByDay[d.getDate()] = m.mood;
-    }
-  });
-
-  // ── Weekly Mood & Task Data ───────────────────────────────────────────────
-  const daysOfWeek = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-  // Only show days Mon → today (exclude future days)
-  const todayJsDay = today.getDay(); // 0=Sun,1=Mon,...,6=Sat
-  const todayIdx = todayJsDay === 0 ? 6 : todayJsDay - 1; // convert to Mon=0..Sun=6
-  const visibleDays = daysOfWeek.slice(0, todayIdx + 1);
-
-  const completedTasksByDay = Array(7).fill(0);
-  const totalTasksByDay = Array(7).fill(0);
-  const moodByDayOfWeek = Array(7).fill(0);
-  const moodCountByDayOfWeek = Array(7).fill(0);
-
-  tasks.forEach(t => {
-    const d = new Date(t.updatedAt || t.createdAt);
-    const diffDays = Math.floor((today - d) / 86400000);
-    if (diffDays < 7) {
-      const dayStr = d.toLocaleDateString('en', { weekday: 'short' });
-      const idx = daysOfWeek.indexOf(dayStr);
-      if (idx !== -1) {
-        totalTasksByDay[idx] += 1;
-        if (t.status === 'completed') completedTasksByDay[idx] += 1;
+  const moodByDay = useMemo(() => {
+    const map = {};
+    moods.forEach(m => {
+      const d = new Date(m.createdAt);
+      if (d.getMonth() === today.getMonth() && d.getFullYear() === today.getFullYear()) {
+        map[d.getDate()] = m.mood;
       }
-    }
-  });
+    });
+    return map;
+  }, [moods, today]);
 
-  moods.forEach(m => {
-    const d = new Date(m.createdAt);
-    const diffDays = Math.floor((today - d) / 86400000);
-    if (diffDays < 7) {
-      const dayStr = d.toLocaleDateString('en', { weekday: 'short' });
-      const idx = daysOfWeek.indexOf(dayStr);
-      if (idx !== -1) {
-        moodByDayOfWeek[idx] += (MOOD_VALUES[m.mood] ?? 3);
-        moodCountByDayOfWeek[idx] += 1;
+  // ── Rolling 7-Day Labels ─────────────────────────────────────────────────
+  const rollingDays = useMemo(() => {
+    const days = [];
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      days.push({
+        label: d.toLocaleDateString('en', { weekday: 'short' }),
+        dateStr: d.toDateString(),
+        fullDate: d
+      });
+    }
+    return days;
+  }, []);
+
+  // ── Weekly Data Mapping (Rolling 7 Days) ──────────────────────────────────
+  const weeklyData = useMemo(() => {
+    const labels = rollingDays.map(d => d.label);
+    const completedTasksByDay = Array(7).fill(0);
+    const totalTasksByDay = Array(7).fill(0);
+    const moodCountByDay = Array(7).fill(0);
+    const sleepByDay = Array(7).fill(0);
+
+    const startTimestamp = rollingDays[0].fullDate.setHours(0,0,0,0);
+
+    tasks.forEach(t => {
+      const d = new Date(t.updatedAt || t.createdAt);
+      if (d.getTime() >= startTimestamp) {
+        const idx = rollingDays.findIndex(rd => rd.dateStr === d.toDateString());
+        if (idx !== -1) {
+          totalTasksByDay[idx]++;
+          if (t.status === 'completed') completedTasksByDay[idx]++;
+        }
       }
-    }
-  });
+    });
 
-  const avgMoodByDay = moodByDayOfWeek.map((val, idx) => {
-    return moodCountByDayOfWeek[idx] > 0 ? Math.round(val / moodCountByDayOfWeek[idx]) : null;
-  });
+    moods.forEach(m => {
+      const d = new Date(m.createdAt);
+      if (d.getTime() >= startTimestamp) {
+        const idx = rollingDays.findIndex(rd => rd.dateStr === d.toDateString());
+        if (idx !== -1) moodCountByDay[idx]++;
+      }
+    });
 
-  // Sliced to visible days only
-  const visibleTotal = totalTasksByDay.slice(0, todayIdx + 1);
-  const visibleCompleted = completedTasksByDay.slice(0, todayIdx + 1);
-  const visibleMoodCount = moodCountByDayOfWeek.slice(0, todayIdx + 1);
+    sleepData.forEach(s => {
+      const d = new Date(s.createdAt);
+      if (d.getTime() >= startTimestamp) {
+        const idx = rollingDays.findIndex(rd => rd.dateStr === d.toDateString());
+        if (idx !== -1) sleepByDay[idx] = parseFloat((s.duration || 0).toFixed(1));
+      }
+    });
 
-  // Clustered bar chart — two bars side by side per day
-  const taskBarChartData = {
-    labels: visibleDays,
+    // Weekly Mood Radar (Rolling 7 Days)
+    const weekMoods = moods.filter(m => new Date(m.createdAt).getTime() >= startTimestamp);
+    const radarData = ['happy', 'neutral', 'sad', 'stressed', 'angry'].map(type => 
+      weekMoods.filter(m => m.mood === type).length
+    );
+
+    return { labels, completedTasksByDay, totalTasksByDay, moodCountByDay, sleepByDay, radarData };
+  }, [moods, tasks, sleepData, rollingDays]);
+
+  // ── Chart Objects ────────────────────────────────────────────────────────
+  const taskBarChartData = useMemo(() => ({
+    labels: weeklyData.labels,
     datasets: [
       {
         label: 'Total',
-        data: visibleTotal,
-        backgroundColor: '#68c3ff',   // light violet
+        data: weeklyData.totalTasksByDay,
+        backgroundColor: '#68c3ff',
         borderRadius: 5,
         barPercentage: 0.75,
         categoryPercentage: 0.65,
       },
       {
         label: 'Completed',
-        data: visibleCompleted,
-        backgroundColor: '#3873f1',   // dark violet
+        data: weeklyData.completedTasksByDay,
+        backgroundColor: '#3873f1',
         borderRadius: 5,
         barPercentage: 0.75,
         categoryPercentage: 0.65,
       },
     ]
-  };
+  }), [weeklyData]);
 
-  const moodChartData = {
-    labels: visibleDays,
+  const moodChartData = useMemo(() => ({
+    labels: weeklyData.labels,
     datasets: [{
       label: 'No. of Inputs',
-      data: visibleMoodCount,
+      data: weeklyData.moodCountByDay,
       borderColor: '#5016e0ff',
       backgroundColor: 'transparent',
       borderWidth: 2.5,
@@ -291,19 +309,33 @@ export default function Dashboard() {
       tension: 0.4,
       pointBackgroundColor: '#5016e0ff',
       pointBorderColor: '#ffffff',
-      pointBorderWidth: 2,
       pointRadius: 6,
-      pointHoverRadius: 9,
       spanGaps: true,
     }],
-  };
+  }), [weeklyData]);
 
-  // ── Sleep Bar Chart ──────────────────────────────────────────────────────
-  const recent7Sleep = sleepData.slice(0, 7).reverse();
-  const sleepChartData = {
-    labels: recent7Sleep.length > 0 ? recent7Sleep.map((_, i) => `Day ${i + 1}`) : ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
-    datasets: [{ label: 'Hours', data: recent7Sleep.length > 0 ? recent7Sleep.map(s => parseFloat((s.duration || 0).toFixed(1))) : Array(7).fill(0), backgroundColor: '#18bc85', borderRadius: 8 }],
-  };
+  const sleepChartData = useMemo(() => ({
+    labels: weeklyData.labels,
+    datasets: [{ 
+      label: 'Hours', 
+      data: weeklyData.sleepByDay, 
+      backgroundColor: '#18bc85', 
+      borderRadius: 8 
+    }],
+  }), [weeklyData]);
+
+  const radarChartData = useMemo(() => ({
+    labels: ['Happy', 'Neutral', 'Sad', 'Stressed', 'Angry'],
+    datasets: [{
+      label: 'Mood Frequency',
+      data: weeklyData.radarData,
+      backgroundColor: 'rgba(178,70,210,0.18)',
+      borderColor: '#B246D2',
+      borderWidth: 2.5,
+      pointBackgroundColor: '#F037A5',
+      pointRadius: 5,
+    }],
+  }), [weeklyData]);
 
   const moodLineOpts = {
     responsive: true, maintainAspectRatio: false,
@@ -472,6 +504,8 @@ export default function Dashboard() {
     return dayNum >= 1 && dayNum <= daysInMonth ? dayNum : null;
   });
 
+  if (loading) return <div className="loading-spinner" style={{ marginTop: '40px' }}></div>;
+
   return (
     <div style={{ paddingBottom: '90px' }}>
       <div className="gradient-header" style={{ marginBottom: '20px', paddingBottom: '28px', borderBottomLeftRadius: '24px', borderBottomRightRadius: '24px' }}>
@@ -482,10 +516,10 @@ export default function Dashboard() {
       {/* ── Stats Grid ── */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', padding: '0 16px', marginBottom: '20px' }}>
         {[
-          { label: 'Completion', value: `${completionRate}%`, icon: <FiTarget size={14} />, color: '#10B981', bg: 'linear-gradient(135deg,#D1FAE5,#A7F3D0)' },
+          { label: 'Completion', value: `${stats.rate}%`, icon: <FiTarget size={14} />, color: '#10B981', bg: 'linear-gradient(135deg,#D1FAE5,#A7F3D0)' },
           { label: 'Streak', value: `${progress?.streak || 0} 🔥`, icon: '🔥', color: '#F97316', bg: 'linear-gradient(135deg,#FEF3C7,#FDE68A)' },
           { label: 'Dopamine', value: `${dopamine}%`, icon: <FiZap size={14} />, color: '#8B5CF6', bg: 'linear-gradient(135deg,#EDE9FE,#DDD6FE)' },
-          { label: 'Tasks', value: `${completedTasks}/${totalTasks}`, icon: <FiTrendingUp size={14} />, color: '#3B82F6', bg: 'linear-gradient(135deg,#DBEAFE,#BFDBFE)' },
+          { label: 'Tasks', value: `${stats.completed}/${stats.total}`, icon: <FiTrendingUp size={14} />, color: '#3B82F6', bg: 'linear-gradient(135deg,#DBEAFE,#BFDBFE)' },
         ].map(stat => (
           <div key={stat.label} style={{ background: stat.bg, borderRadius: '18px', padding: '18px', boxShadow: '0 2px 10px rgba(0,0,0,0.06)' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: stat.color, fontSize: '0.78rem', fontWeight: 700, marginBottom: '8px' }}>
@@ -549,24 +583,7 @@ export default function Dashboard() {
         </h3>
         <div style={{ height: '220px', display: 'flex', justifyContent: 'center' }}>
           <Radar
-            data={{
-              labels: ['Happy', 'Neutral', 'Sad', 'Stressed', 'Angry'],
-              datasets: [{
-                label: 'Mood Frequency',
-                data: [
-                  moods.filter(m => m.mood === 'happy').length,
-                  moods.filter(m => m.mood === 'neutral').length,
-                  moods.filter(m => m.mood === 'sad').length,
-                  moods.filter(m => m.mood === 'stressed').length,
-                  moods.filter(m => m.mood === 'angry').length,
-                ],
-                backgroundColor: 'rgba(178,70,210,0.18)',
-                borderColor: '#B246D2',
-                borderWidth: 2.5,
-                pointBackgroundColor: '#F037A5',
-                pointRadius: 5,
-              }],
-            }}
+            data={radarChartData}
             options={{
               responsive: true,
               maintainAspectRatio: false,

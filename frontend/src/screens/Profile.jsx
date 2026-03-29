@@ -194,7 +194,7 @@ const NODES = [
 const LINKS = [[0, 3], [3, 5], [5, 1], [1, 4], [4, 6], [6, 7], [7, 8], [8, 9], [9, 2], [2, 0], [3, 4], [4, 5], [8, 4], [1, 9]];
 
 // ─── SIMPLE BANNER ───────────────────────────────────────────────
-function SimpleBanner({ dark, onDark }) {
+function SimpleBanner({ dark, onDark, user }) {
   return (
     <div className="gradient-header" style={{ position: 'relative' }}>
       <button onClick={onDark} style={{
@@ -206,8 +206,8 @@ function SimpleBanner({ dark, onDark }) {
         {dark ? <FiSun size={18} /> : <FiMoon size={18} />}
       </button>
 
-      <h1><FiUser /> Profile</h1>
-      <p>Manage your account</p>
+      <h1><FiUser /> {user?.name || localStorage.getItem('nn-displayName') || 'Your'} Profile</h1>
+      <p>Manage your account settings</p>
     </div>
   );
 }
@@ -253,6 +253,7 @@ export default function Profile() {
       <SimpleBanner
         dark={dark}
         onDark={() => setDark(!dark)}
+        user={user}
       />
 
       {/* ── Tab Switcher ── */}

@@ -29,7 +29,7 @@ export function AuthProvider({ children }) {
       const payload = safeDecodeJWT(token);
       if (payload) {
         setUser({ id: payload.id, name: payload.name, email: payload.email });
-        if (payload.name && !localStorage.getItem('nn-displayName')) {
+        if (payload.name) {
           localStorage.setItem('nn-displayName', payload.name);
         }
       } else {
@@ -79,6 +79,7 @@ export function AuthProvider({ children }) {
 
   const logout = () => {
     localStorage.removeItem('neuro_token');
+    localStorage.removeItem('nn-displayName');
     setToken(null);
     setUser(null);
   };

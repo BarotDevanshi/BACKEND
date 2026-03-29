@@ -2,6 +2,18 @@ const express = require("express");
 const dotenv = require("dotenv");
 const cors = require("cors");
 const mongoose = require("mongoose");
+const cron = require("node-cron");
+const Task = require("./Model/Task");
+
+// scheduled job at 12:00 am
+cron.schedule("0 0 * * *", async () => {
+  try {
+    const result = await Task.deleteMany({ status: "completed" });
+    console.log(`[CRON] Deleted ${result.deletedCount} completed tasks at ${new Date().toISOString()}`);
+  } catch (err) {
+    console.log("[CRON ERROR]", err.message);
+  }
+});
 
 // Load environment variables
 dotenv.config();

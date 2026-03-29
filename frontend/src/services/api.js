@@ -19,6 +19,19 @@ API.interceptors.request.use((config) => {
   return config;
 });
 
+// Detect 401 Unauthorized and logout
+API.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response && error.response.status === 401) {
+      localStorage.removeItem('neuro_token');
+      localStorage.removeItem('nn-displayName');
+      window.location.href = '/login';
+    }
+    return Promise.reject(error);
+  }
+);
+
 // Auth
 export const registerUser = (data) => API.post('/auth/register', data);
 export const loginUser = (data) => API.post('/auth/login', data);

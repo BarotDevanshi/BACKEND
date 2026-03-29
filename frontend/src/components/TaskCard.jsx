@@ -46,8 +46,9 @@ export default function TaskCard() {
   };
 
   const handleToggle = async (id, status) => {
+    if (status === 'completed') return; // Cannot uncheck
     try {
-      await updateTask(id, { status: status === 'pending' ? 'completed' : 'pending' });
+      await updateTask(id, { status: 'completed' });
       loadTasks();
       window.dispatchEvent(new Event('dashboardDataChanged'));
     } catch {}
