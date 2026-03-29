@@ -52,6 +52,7 @@ exports.updateProgress = async (userId) => {
     progress.completionRate = completionRate;
 
     await progress.save();
+    console.log(`[DB SUCCESS] Progress updated for userId: ${userId}`);
 };
 
 
@@ -73,6 +74,7 @@ exports.getProgress = async (req, res) => {
         res.json({ success: true, data: progress });
 
     } catch (err) {
+        console.error(`[DB ERROR] Error fetching progress:`, err.message);
         res.status(500).json({ error: err.message });
     }
 };
@@ -97,6 +99,7 @@ exports.logAppOpen = async (req, res) => {
             progress.lastOpenedDate = new Date();
             streakIncreased = true;
             await progress.save();
+            console.log(`[DB SUCCESS] App open logged, streak: ${progress.streak} for userId: ${req.user.id}`);
         }
 
         res.json({ success: true, streak: progress.streak, streakIncreased });

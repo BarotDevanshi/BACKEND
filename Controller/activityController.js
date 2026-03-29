@@ -232,7 +232,7 @@ exports.chat = async (req, res) => {
             await Mood.create({
                 userId: req.user.id,
                 mood: detectedMood,
-                note: `from ai chat bot: ${message}`
+                note: "chatbot"
             });
         }
 
@@ -243,10 +243,12 @@ exports.chat = async (req, res) => {
             message,
             response
         });
+        console.log(`[DB SUCCESS] Chat stored for userId: ${userId}`);
 
         res.json({ success: true, response });
 
     } catch (err) {
+        console.error(`[DB ERROR] Error in chatbot storage:`, err.message);
         res.status(500).json({ error: err.message });
     }
 };
@@ -258,8 +260,11 @@ exports.getRecommendation = async (req, res) => {
     try {
         const userId = req.user.id;
 
-        const mood = await Mood.findOne({ userId }).sort({ createdAt: -1 });
-        const sleep = await Sleep.findOne({ userId }).sort({ createdAt: -1 });
+        const startOfDay = new Date();
+        startOfDay.setHours(0, 0, 0, 0);
+
+        const mood = await Mood.findOne({ userId, createdAt: { $gte: startOfDay } }).sort({ createdAt: -1 });
+        const sleep = await Sleep.findOne({ userId, createdAt: { $gte: startOfDay } }).sort({ createdAt: -1 });
 
         const tasks = await Task.find({
             userId,
@@ -378,10 +383,12 @@ exports.getRecommendation = async (req, res) => {
             message: `Mood: ${mood?.mood}, Sleep: ${sleep?.duration}h`,
             response: suggestion
         });
+        console.log(`[DB SUCCESS] Recommendation stored for userId: ${userId}`);
 
         res.json({ success: true, suggestion });
 
     } catch (err) {
+        console.error(`[DB ERROR] Error saving recommendation:`, err.message);
         res.status(500).json({ error: err.message });
     }
 };

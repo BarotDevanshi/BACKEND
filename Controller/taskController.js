@@ -12,9 +12,11 @@ exports.createTask = async (req, res) => {
             parentTask: req.body.parentTask || null
         });
 
+        console.log(`[DB SUCCESS] Task created for userId: ${req.user.id}`);
         res.json({ success: true, data: task });
 
     } catch (err) {
+        console.error(`[DB ERROR] Error creating task:`, err.message);
         res.status(500).json({ error: err.message });
     }
 };

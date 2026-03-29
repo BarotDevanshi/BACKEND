@@ -55,11 +55,12 @@ if (!process.env.MONGO_URI) {
 mongoose
   .connect(process.env.MONGO_URI)
   .then(() => {
-    console.log("MongoDB Connected ✅");
+    const dbName = mongoose.connection.name;
+    const dbHost = mongoose.connection.host;
+    console.log(`MongoDB Connected ✅ | Database: ${dbName} | Host: ${dbHost}`);
   })
   .catch((err) => {
     console.error("❌ MongoDB Connection Error:", err.message);
-    // On Render, we want the build to fail if DB is not reachable
     process.exit(1); 
   });
 

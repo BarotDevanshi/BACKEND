@@ -17,9 +17,11 @@ exports.addSleep = async (req, res) => {
             quality
         });
 
+        console.log(`[DB SUCCESS] Sleep data saved for userId: ${req.user.id}`);
         res.json({ success: true, data: sleep });
 
     } catch (err) {
+        console.error(`[DB ERROR] Error saving sleep data:`, err.message);
         res.status(500).json({ error: err.message });
     }
 };

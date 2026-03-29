@@ -83,6 +83,8 @@ export default function Dashboard() {
 
     const pseudo = (h, m2, seed) => Math.abs(Math.sin(h * 137.5 + m2 * 17.3 + seed) * 0.5 + 0.5);
 
+    const pendingCount = tasks.filter(t => t.status !== 'completed').length;
+
     return slots.map(({ hour, min }) => {
       const key = `${hour}:${min}`;
       const mood = moodSlots[key];

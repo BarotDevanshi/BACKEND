@@ -9,9 +9,11 @@ exports.addMood = async (req, res) => {
             note: req.body.note
         });
 
+        console.log(`[DB SUCCESS] Mood saved for userId: ${req.user.id}`);
         res.json({ success: true, data: mood });
 
     } catch (err) {
+        console.error(`[DB ERROR] Error saving mood:`, err.message);
         res.status(500).json({ error: err.message });
     }
 };
