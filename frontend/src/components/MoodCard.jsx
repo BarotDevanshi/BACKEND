@@ -15,12 +15,15 @@ export default function MoodCard() {
   const handleSelect = async (moodValue, label) => {
     setSelectedMood(moodValue);
     try {
-      await saveMood({ mood: moodValue, note: "home" });
+      console.log("[MoodCard] Sending mood data:", { mood: moodValue, note: "home" });
+      const response = await saveMood({ mood: moodValue, note: "home" });
+      console.log("[MoodCard] Response from server:", response);
       toast.success(`Feeling ${label} today. Checked in!`);
       // Notify other components (like RecommendationCard) to update
       window.dispatchEvent(new Event('dashboardDataChanged'));
     } catch (err) {
       console.error("[MoodCard ERROR] Failed to save mood:", err);
+      console.error("[MoodCard DEBUG] Error details:", err.response?.data || err.message);
       toast.error("Failed to save your mood. Please try again.");
     }
   };

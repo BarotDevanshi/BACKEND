@@ -3,18 +3,25 @@ const Mood = require("../Model/Mood");
 // ➤ Add Mood
 exports.addMood = async (req, res) => {
     try {
+        console.log("[MOOD API] Received request with:", { body: req.body, userId: req.user?.id });
+
+        if (!req.user || !req.user.id) {
+            console.error("[MOOD API] ERROR: No user ID found in request");
+            return res.status(401).json({ error: "User authentication failed" });
+        }
+
         const mood = await Mood.create({
             userId: req.user.id,
             mood: req.body.mood,
             note: req.body.note
         });
 
-        console.log(`[DB SUCCESS] Mood saved for userId: ${req.user.id}`);
+        console.log(`[DB SUCCESS] Mood saved for userId: ${req.user.id}`, mood);
         res.json({ success: true, data: mood });
 
     } catch (err) {
-        console.error(`[DB ERROR] Error saving mood:`, err.message);
-        res.status(500).json({ error: err.message });
+        console.error(`[DB ERROR] Error saving mood:`, err);
+        res.status(500).json({ error: err.message, details: err.toString() });
     }
 };
 

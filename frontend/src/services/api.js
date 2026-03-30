@@ -13,8 +13,10 @@ const API = axios.create({
 // Add auth token to every request
 API.interceptors.request.use((config) => {
   const token = localStorage.getItem('neuro_token');
+  console.log("[API INTERCEPTOR] Token check:", token ? "Token found" : "No token found");
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
+    console.log("[API INTERCEPTOR] Authorization header set");
   }
   return config;
 });
