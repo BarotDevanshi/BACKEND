@@ -1,13 +1,6 @@
 import { useState, useEffect } from 'react';
 import { getTasks, addTask, updateTask, deleteTask } from '../services/api';
-import { FiCheck, FiTrash2 } from 'react-icons/fi';
-import { BiTask } from 'react-icons/bi';
-
-const PRIORITY_COLORS = {
-  high:   { bg: '#FEE2E2', color: '#DC2626', border: '#DC2626' },
-  medium: { bg: '#FEF3C7', color: '#D97706', border: '#D97706' },
-  low:    { bg: '#D1FAE5', color: '#059669', border: '#059669' },
-};
+import { FiCheck, FiChevronRight } from 'react-icons/fi';
 
 export default function TaskCard() {
   const [tasks, setTasks] = useState([]);
@@ -29,20 +22,20 @@ export default function TaskCard() {
     try {
       const { data } = await getTasks();
       setTasks(data.data || []);
-    } catch {}
+    } catch { }
   };
 
   const handleAdd = async (e) => {
     e.preventDefault();
     if (!newTask.trim()) return;
-    const selectedPriority = priority; // capture current value
+    const selectedPriority = priority;
     try {
       await addTask({ title: newTask, priority: selectedPriority });
       setNewTask('');
       setPriority('medium');
       loadTasks();
       window.dispatchEvent(new Event('dashboardDataChanged'));
-    } catch {}
+    } catch { }
   };
 
   const handleToggle = async (id, status) => {
@@ -51,172 +44,201 @@ export default function TaskCard() {
       await updateTask(id, { status: 'completed' });
       loadTasks();
       window.dispatchEvent(new Event('dashboardDataChanged'));
-    } catch {}
+    } catch { }
   };
 
-  const handleDelete = async (id) => {
-    try {
-      await deleteTask(id);
-      loadTasks();
-      window.dispatchEvent(new Event('dashboardDataChanged'));
-    } catch {}
-  };
+  const currentTasks = tasks.filter(t => t.status !== 'completed');
 
-  const visibleTasks = tasks.filter(t => {
+  // For completed logic, only show today's completed by default
+  const completedTasks = tasks.filter(t => {
     if (t.status === 'completed') {
       const updatedAt = new Date(t.updatedAt || t.createdAt);
-      // Hide if older than 24 hours
       if (now - updatedAt > 24 * 60 * 60 * 1000) return false;
+      return true;
     }
-    return true;
+    return false;
   });
 
-  const completedVisible = visibleTasks.filter(t => t.status === 'completed');
-  // Show clear notification if it's 8 PM or later
   const isEndOfDay = now.getHours() >= 20;
+
+  // Render Pill Color Helper
+  const getPillStyle = (p) => {
+    switch (p) {
+      case 'high': return { bg: '#FEE2E2', color: '#DC2626' };
+      case 'medium': return { bg: '#FEF3C7', color: '#D97706' };
+      case 'low': return { bg: '#D1FAE5', color: '#059669' };
+      default: return { bg: '#F3F4F6', color: '#6B7280' };
+    }
+  };
 
   return (
     <div className="card">
-      <h3 className="card-title">
-        <span style={{ color: 'var(--blue-button)' }}><BiTask /></span> Task Dumpyard
-      </h3>
+      <h2 className="card-title" style={{ fontSize: '1.4rem', margin: '0 0 20px 0' }}>
+        Task Dumpyard
+      </h2>
 
-      <form onSubmit={handleAdd} style={{ marginBottom: '20px' }}>
+      <form onSubmit={handleAdd} style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '24px', flexWrap: 'wrap' }}>
         <input
           type="text"
-          placeholder="What needs to be done?"
+          placeholder="Dump a task here..."
           value={newTask}
           onChange={(e) => setNewTask(e.target.value)}
           style={{
-            width: '100%',
-            background: '#ffffff',
-            borderRadius: 'var(--radius-sm)',
-            border: '1.5px solid var(--border)',
-            padding: '14px 16px',
-            marginBottom: '12px',
+            flex: '1',
+            minWidth: '200px',
+            background: '#F9FAFB',
+            borderRadius: '24px',
+            border: 'none',
+            padding: '14px 20px',
             fontSize: '1rem',
-            color: 'var(--text-primary)',
+            color: '#1F2937',
+            outline: 'none',
           }}
         />
-        
-        <div style={{ display: 'flex', gap: '12px' }}>
-          <select
-            value={priority}
-            onChange={(e) => setPriority(e.target.value)}
-            style={{
-              flex: 1,
-              background: PRIORITY_COLORS[priority]?.bg || '#fff',
-              border: `1.5px solid ${PRIORITY_COLORS[priority]?.border || '#ccc'}`,
-              borderRadius: 'var(--radius-sm)',
-              padding: '0 12px',
-              color: PRIORITY_COLORS[priority]?.color || 'var(--text-primary)',
-              fontWeight: '600',
-              height: '42px',
-            }}
-          >
-            <option value="low">🟢 Low Priority</option>
-            <option value="medium">🟡 Medium Priority</option>
-            <option value="high">🔴 High Priority</option>
-          </select>
 
-          <button type="submit" className="btn-blue">
-            + Add
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          {/* Priority Selectors */}
+          {['high', 'medium', 'low'].map(p => {
+            const isActive = priority === p;
+            let activeStyle = {};
+            if (isActive) {
+              if (p === 'high') activeStyle = { border: '2px solid #FCA5A5', color: '#EF4444', fontWeight: '600' };
+              else if (p === 'medium') activeStyle = { border: '2px solid #FCD34D', color: '#F59E0B', fontWeight: '600' };
+              else activeStyle = { border: '2px solid #6EE7B7', color: '#10B981', fontWeight: '600' };
+            }
+            return (
+              <button
+                key={p}
+                type="button"
+                onClick={() => setPriority(p)}
+                style={{
+                  background: isActive ? (p === 'medium' ? '#FEF3C7' : p === 'high' ? '#FEF2F2' : '#ECFDF5') : 'transparent',
+                  border: isActive ? activeStyle.border : 'none',
+                  color: isActive ? activeStyle.color : '#6B7280',
+                  borderRadius: '20px',
+                  padding: '6px 12px',
+                  fontSize: '0.85rem',
+                  fontWeight: isActive ? 600 : 500,
+                  cursor: 'pointer',
+                  textTransform: 'capitalize',
+                  transition: 'all 0.2s'
+                }}
+              >
+                {p === 'medium' ? 'Med' : p}
+              </button>
+            );
+          })}
+
+          <button type="submit" style={{
+            width: '42px',
+            height: '42px',
+            borderRadius: '50%',
+            background: '#45B39D',
+            color: 'white',
+            border: 'none',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: '1.5rem',
+            cursor: 'pointer',
+            marginLeft: '8px',
+            boxShadow: '0 2px 8px rgba(69, 179, 157, 0.4)'
+          }}>
+            +
           </button>
         </div>
       </form>
 
-      {isEndOfDay && completedVisible.length > 0 && showClearNotif && (
-        <div style={{ background: '#EEF2FF', border: '1px solid #C7D2FE', borderRadius: '10px', padding: '12px 16px', marginBottom: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', boxShadow: '0 2px 8px rgba(99,102,241,0.1)' }}>
-          <div>
-            <p style={{ margin: 0, fontSize: '0.85rem', fontWeight: 700, color: '#4338CA' }}>🌙 Evening Review</p>
-            <p style={{ margin: 0, fontSize: '0.75rem', color: '#6366F1', marginTop: '2px' }}>You have {completedVisible.length} completed {completedVisible.length === 1 ? 'task' : 'tasks'}. Clear them for tomorrow?</p>
-          </div>
-          <div style={{ display: 'flex', gap: '8px' }}>
-            <button onClick={() => setShowClearNotif(false)} style={{ background: 'transparent', border: 'none', color: '#6B7280', fontSize: '0.75rem', cursor: 'pointer', padding: '4px' }}>Dismiss</button>
-            <button
-              onClick={async () => {
-                try {
-                  await Promise.all(completedVisible.map(t => deleteTask(t._id)));
-                  setShowClearNotif(false);
-                  loadTasks();
-                } catch {}
+      {/* Pending Tasks */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '32px' }}>
+        {currentTasks.map(task => {
+          const p = task.priority || 'medium';
+          const style = getPillStyle(p);
+
+          return (
+            <div
+              key={task._id}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                padding: '16px 20px',
+                background: '#F9FAFB',
+                borderRadius: '20px',
+                gap: '16px',
+                cursor: 'pointer',
+                transition: 'background 0.2s'
               }}
-              style={{ background: '#4F46E5', color: 'white', border: 'none', borderRadius: '6px', padding: '6px 12px', fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer', transition: '0.2s' }}
+              onClick={() => handleToggle(task._id, task.status)}
             >
-              Clear Now
-            </button>
+              <div
+                style={{
+                  width: '24px', height: '24px', borderRadius: '50%',
+                  border: '2px solid #A7F3D0',
+                  background: 'transparent',
+                  flexShrink: 0,
+                }}
+              />
+              <span style={{ flex: 1, fontSize: '1.05rem', color: '#1F2937', fontWeight: 500 }}>
+                {task.title}
+              </span>
+              <span style={{
+                fontSize: '0.75rem',
+                fontWeight: '600',
+                padding: '4px 12px',
+                borderRadius: '12px',
+                background: style.bg,
+                color: style.color,
+                textTransform: 'capitalize',
+              }}>
+                {p}
+              </span>
+              <FiChevronRight color="#9CA3AF" />
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Completed Section */}
+      {completedTasks.length > 0 && (
+        <div>
+          <h4 style={{ fontSize: '0.9rem', color: '#3c3838ff', fontWeight: '500', marginBottom: '16px' }}>
+            Completed ({completedTasks.length})
+          </h4>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            {completedTasks.map(task => (
+              <div key={task._id} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '0 8px' }}>
+                <FiCheck color="#34D399" size={20} />
+                <span style={{ color: '#9CA3AF', textDecoration: 'line-through', fontSize: '1rem', fontWeight: 500 }}>
+                  {task.title}
+                </span>
+              </div>
+            ))}
           </div>
         </div>
       )}
 
-      {visibleTasks.length === 0 ? (
-        <div style={{ textAlign: 'center', color: 'var(--text-tertiary)', padding: '20px 0', fontSize: '0.9rem' }}>
-          No tasks yet. Start dumping your thoughts! 💭
-        </div>
-      ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-          {visibleTasks.map(task => {
-            const p = task.priority || 'medium';
-            const pc = PRIORITY_COLORS[p] || PRIORITY_COLORS.medium;
-            return (
-              <div
-                key={task._id}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  padding: '12px 14px',
-                  background: '#ffffff',
-                  borderRadius: '10px',
-                  gap: '12px',
-                  borderLeft: `4px solid ${pc.border}`,
-                  boxShadow: '0 2px 8px rgba(0,0,0,0.07)',
-                }}
-              >
-                <button
-                  onClick={() => handleToggle(task._id, task.status)}
-                  style={{
-                    width: '24px', height: '24px', borderRadius: '50%',
-                    border: `2px solid ${task.status === 'completed' ? 'var(--green-button)' : '#CBD5E1'}`,
-                    background: task.status === 'completed' ? 'var(--green-button)' : 'transparent',
-                    color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    flexShrink: 0,
-                  }}
-                >
-                  {task.status === 'completed' && <FiCheck size={14} />}
-                </button>
-
-                <span style={{
-                  flex: 1,
-                  textDecoration: task.status === 'completed' ? 'line-through' : 'none',
-                  color: task.status === 'completed' ? '#9CA3AF' : '#1F2937',
-                  fontSize: '0.95rem',
-                }}>
-                  {task.title}
-                </span>
-
-                <span style={{
-                  fontSize: '0.72rem',
-                  fontWeight: '700',
-                  padding: '4px 10px',
-                  borderRadius: '20px',
-                  background: pc.bg,
-                  color: pc.color,
-                  textTransform: 'capitalize',
-                  whiteSpace: 'nowrap',
-                  letterSpacing: '0.03em',
-                }}>
-                  {p}
-                </span>
-
-                <button
-                  onClick={() => handleDelete(task._id)}
-                  style={{ color: '#EF4444', background: 'transparent', padding: '4px', flexShrink: 0 }}
-                >
-                  <FiTrash2 />
-                </button>
-              </div>
-            );
-          })}
+      {/* Evening Review Notification */}
+      {isEndOfDay && completedTasks.length > 0 && showClearNotif && (
+        <div style={{ background: '#EEF2FF', borderRadius: '12px', padding: '16px', marginTop: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div>
+            <p style={{ margin: 0, fontSize: '0.9rem', fontWeight: 600, color: '#4338CA' }}>Review your day</p>
+            <p style={{ margin: 0, fontSize: '0.8rem', color: '#6366F1', marginTop: '4px' }}>Clear {completedTasks.length} tasks?</p>
+          </div>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <button onClick={() => setShowClearNotif(false)} style={{ background: 'transparent', border: 'none', color: '#6B7280', fontSize: '0.8rem', cursor: 'pointer' }}>Dismiss</button>
+            <button
+              onClick={async () => {
+                try {
+                  await Promise.all(completedTasks.map(t => deleteTask(t._id)));
+                  setShowClearNotif(false);
+                  loadTasks();
+                } catch { }
+              }}
+              style={{ background: '#4F46E5', color: 'white', border: 'none', borderRadius: '8px', padding: '6px 14px', fontSize: '0.8rem', fontWeight: 600, cursor: 'pointer' }}
+            >
+              Clear
+            </button>
+          </div>
         </div>
       )}
     </div>

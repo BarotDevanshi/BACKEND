@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { NavLink } from 'react-router-dom';
 import { FiHome, FiBarChart2, FiMessageCircle, FiUser } from 'react-icons/fi';
 import { IoGameControllerOutline } from 'react-icons/io5';
+import { BiBrain } from 'react-icons/bi';
 import { useAuth } from '../context/AuthContext';
 
 export default function Sidebar() {

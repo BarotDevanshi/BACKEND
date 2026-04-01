@@ -21,7 +21,7 @@ export default function SleepCard() {
     if (w.h < b.h || (w.h === b.h && w.m < b.m)) w.h += 24;
     let durationMins = (w.h * 60 + w.m) - (b.h * 60 + b.m);
     let hours = durationMins / 60;
-    
+
     if (hours <= 4.9) {
       setQuality('poor');
     } else if (hours >= 5 && hours < 7) {
@@ -37,13 +37,13 @@ export default function SleepCard() {
   const calculateDuration = () => {
     let b = to24(bedtime);
     let w = to24(wakeTime);
-    
+
     if (w.h < b.h || (w.h === b.h && w.m < b.m)) w.h += 24;
-    
+
     let durationMins = (w.h * 60 + w.m) - (b.h * 60 + b.m);
     let hours = Math.floor(durationMins / 60);
     let mins = durationMins % 60;
-    
+
     return `${hours}h ${mins}m`;
   };
 
@@ -58,7 +58,7 @@ export default function SleepCard() {
 
       const wakeDate = new Date(today);
       wakeDate.setHours(w.h, w.m, 0, 0);
-      
+
       if (wakeDate <= sleepDate) wakeDate.setDate(wakeDate.getDate() + 1);
 
       await saveSleep({
@@ -74,8 +74,8 @@ export default function SleepCard() {
     }
   };
 
-  const hoursList = Array.from({length: 12}, (_, i) => String(i + 1).padStart(2, '0'));
-  const minsList = Array.from({length: 60}, (_, i) => String(i).padStart(2, '0'));
+  const hoursList = Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, '0'));
+  const minsList = Array.from({ length: 60 }, (_, i) => String(i).padStart(2, '0'));
 
   const TimePicker = ({ label, icon, val, setVal }) => (
     <div style={{ flex: 1 }}>
@@ -83,24 +83,24 @@ export default function SleepCard() {
         {label} {icon}
       </label>
       <div style={{ display: 'flex', gap: '4px' }}>
-        <select 
-          value={val.h} 
-          onChange={e => setVal({...val, h: e.target.value})}
+        <select
+          value={val.h}
+          onChange={e => setVal({ ...val, h: e.target.value })}
           style={{ flex: 1, padding: '10px 4px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg-primary)', fontSize: '0.9rem', outline: 'none' }}
         >
           {hoursList.map(h => <option key={h} value={h}>{h}</option>)}
         </select>
         <span style={{ alignSelf: 'center', fontWeight: 'bold', color: 'var(--text-secondary)' }}>:</span>
-        <select 
-          value={val.m} 
-          onChange={e => setVal({...val, m: e.target.value})}
+        <select
+          value={val.m}
+          onChange={e => setVal({ ...val, m: e.target.value })}
           style={{ flex: 1, padding: '10px 4px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg-primary)', fontSize: '0.9rem', outline: 'none' }}
         >
           {minsList.map(m => <option key={m} value={m}>{m}</option>)}
         </select>
-        <select 
-          value={val.p} 
-          onChange={e => setVal({...val, p: e.target.value})}
+        <select
+          value={val.p}
+          onChange={e => setVal({ ...val, p: e.target.value })}
           style={{ flex: 1, padding: '10px 4px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg-primary)', fontSize: '0.9rem', outline: 'none', fontWeight: 700 }}
         >
           <option value="AM">AM</option>
@@ -121,9 +121,9 @@ export default function SleepCard() {
         <TimePicker label="Wake Time" icon="☀️" val={wakeTime} setVal={setWakeTime} />
       </div>
 
-      <div style={{ 
-        background: 'var(--blue-light)', 
-        borderRadius: 'var(--radius-sm)', 
+      <div style={{
+        background: 'var(--blue-light)',
+        borderRadius: 'var(--radius-sm)',
         padding: '16px',
         display: 'flex',
         justifyContent: 'space-between',
@@ -161,7 +161,7 @@ export default function SleepCard() {
         ))}
       </div>
 
-      <button 
+      <button
         style={{
           width: '100%', padding: '14px', borderRadius: 'var(--radius-md)',
           background: '#03553a', color: 'white', fontWeight: 600, fontSize: '1rem'

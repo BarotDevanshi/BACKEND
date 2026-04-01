@@ -16,19 +16,32 @@ API.interceptors.request.use((config) => {
   console.log("[API INTERCEPTOR] Token check:", token ? "Token found" : "No token found");
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
-    console.log("[API INTERCEPTOR] Authorization header set");
+    console.log("[API INTERCEPTOR] ✅ Authorization header SET:", config.headers.Authorization.substring(0, 20) + "...");
+  } else {
+    console.error("[API INTERCEPTOR] ❌ NO TOKEN FOUND - Request will fail!");
   }
+  console.log("[API DEBUG] Request URL:", config.url);
+  console.log("[API DEBUG] Full config headers:", config.headers);
   return config;
 });
 
 // Detect 401 Unauthorized and logout
 API.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    console.log("[API SUCCESS]", response.config.url, "Status:", response.status);
+    return response;
+  },
   (error) => {
-    if (error.response && error.response.status === 401) {
-      localStorage.removeItem('neuro_token');
-      localStorage.removeItem('nn-displayName');
-      window.location.href = '/login';
+    if (error.response) {
+      console.error("[API ERROR]", error.config?.url, "Status:", error.response.status, "Message:", error.response.data);
+      if (error.response.status === 401) {
+        console.error("[AUTH FAILED] 401 - Logging out user");
+        localStorage.removeItem('neuro_token');
+        localStorage.removeItem('nn-displayName');
+        window.location.href = '/login';
+      }
+    } else {
+      console.error("[API CONNECTION ERROR]", error.message);
     }
     return Promise.reject(error);
   }
@@ -58,7 +71,11 @@ export const deleteSleep = (id) => API.delete(`/sleep/${id}`);
 // Activity / Chat
 export const sendChat = (data) => API.post('/activity/chat', data);
 export const getChatHistory = () => API.get('/activity/chat');
-export const getRecommendation = () => API.post('/activity/recommend');
+export const getRecommendation = (data) => API.post('/activity/recommend', data);
+
+// Notifications
+export const subscribeNotifications = (data) => API.post('/notifications/subscribe', data);
+export const triggerUserNotification = (data) => API.post('/notifications/notify-user', data);
 
 // Progress
 export const getProgress = () => API.get('/progress');

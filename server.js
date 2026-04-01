@@ -4,8 +4,10 @@ const cors = require("cors");
 const mongoose = require("mongoose");
 const cron = require("node-cron");
 const Task = require("./Model/Task");
+const webpush = require("web-push");
 
-// scheduled job at 12:00 am
+
+// Scheduled job at 12:00 AM - delete completed tasks
 cron.schedule("0 0 * * *", async () => {
   try {
     const result = await Task.deleteMany({ status: "completed" });
@@ -15,15 +17,33 @@ cron.schedule("0 0 * * *", async () => {
   }
 });
 
+// Scheduled job at 8:00 AM - send morning reminder notifications
+cron.schedule("0 8 * * *", async () => {
+  try {
+    const { sendDailyReminders } = require("./Controller/notificationController");
+    await sendDailyReminders();
+    console.log(`[CRON] 🔔 Daily reminders sent at ${new Date().toISOString()}`);
+  } catch (err) {
+    console.log("[CRON ERROR] Morning reminders:", err.message);
+  }
+});
+
 // Load environment variables
 dotenv.config();
+
+// ✅ Configure web-push VAPID keys
+webpush.setVapidDetails(
+  'mailto:[neuronexus813@gmail.com]',
+  process.env.VAPID_PUBLIC_KEY,
+  process.env.VAPID_PRIVATE_KEY
+);
 
 // App init
 const app = express();
 
 // 🔹 Improved CORS for Mobile and Vercel
 app.use(cors({
-  origin: "*", 
+  origin: "*",
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"]
 }));
@@ -61,7 +81,7 @@ mongoose
   })
   .catch((err) => {
     console.error("❌ MongoDB Connection Error:", err.message);
-    process.exit(1); 
+    process.exit(1);
   });
 
 //-------->API ROUTES<--------//
@@ -71,6 +91,8 @@ app.use("/api/tasks", require("./Routes/taskRoutes"));
 app.use("/api/sleep", require("./Routes/sleepRoutes"));
 app.use("/api/activity", require("./Routes/activityRoutes"));
 app.use("/api/progress", require("./Routes/progressRoutes"));
+app.use("/api/ai", require("./Routes/aiRoutes"));
+app.use("/api/notifications", require("./Routes/notificationRoutes"));
 
 // Port setup
 const PORT = process.env.PORT || 5000;

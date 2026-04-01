@@ -196,7 +196,7 @@ const LINKS = [[0, 3], [3, 5], [5, 1], [1, 4], [4, 6], [6, 7], [7, 8], [8, 9], [
 // ─── SIMPLE BANNER ───────────────────────────────────────────────
 function SimpleBanner({ dark, onDark, user }) {
   return (
-    <div className="gradient-header" style={{ position: 'relative' }}>
+    <div className="vibrant-header" style={{ position: 'relative' }}>
       <button onClick={onDark} style={{
         position: 'absolute', top: '24px', right: '24px',
         background: 'rgba(255,255,255,0.2)', backdropFilter: 'blur(10px)',

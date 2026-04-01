@@ -308,7 +308,7 @@ export default function Games() {
 
   return (
     <div style={{ paddingBottom: '80px' }}>
-      <div className="gradient-header">
+      <div className="vibrant-header">
         <h1><IoGameControllerOutline /> Mind Games</h1>
         <p>Relax, focus &amp; recharge 🧠</p>
       </div>

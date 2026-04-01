@@ -10,6 +10,7 @@ import Dashboard from './screens/Dashboard';
 import Chat from './screens/Chat';
 import Games from './screens/Games';
 import Profile from './screens/Profile';
+import AISuggestion from './screens/AISuggestion';
 
 import Sidebar from './components/Sidebar';
 
@@ -34,6 +35,7 @@ function AppLayout() {
           <Route path="/chat" element={<Chat />} />
           <Route path="/games" element={<Games />} />
           <Route path="/profile" element={<Profile />} />
+          <Route path="/ai-suggestion" element={<AISuggestion />} />
         </Routes>
       </main>
       <BottomNav />

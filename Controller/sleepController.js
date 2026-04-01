@@ -1,4 +1,5 @@
 const Sleep = require("../Model/Sleep");
+const { sendSmartNotification } = require("./notificationController");
 
 // ➤ Add Sleep Data
 exports.addSleep = async (req, res) => {
@@ -18,6 +19,10 @@ exports.addSleep = async (req, res) => {
         });
 
         console.log(`[DB SUCCESS] Sleep data saved for userId: ${req.user.id}`);
+
+        // 🔔 Send push notification based on sleep duration
+        sendSmartNotification(req.user.id, "sleep").catch(() => {});
+
         res.json({ success: true, data: sleep });
 
     } catch (err) {

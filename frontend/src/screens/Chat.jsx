@@ -88,7 +88,7 @@ export default function Chat() {
     <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
       {/* Header — Fixed at top of flex */}
       <div
-        className="gradient-header"
+        className="vibrant-header"
         style={{ marginBottom: 0, borderBottomLeftRadius: 0, borderBottomRightRadius: 0, flexShrink: 0 }}
       >
         <h1>

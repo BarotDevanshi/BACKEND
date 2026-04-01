@@ -1,5 +1,6 @@
 const Task = require("../Model/Task");
 const { updateProgress } = require("./progressController");
+const { sendSmartNotification } = require("./notificationController");
 
 // ➤ Create Task / Subtask
 exports.createTask = async (req, res) => {
@@ -13,6 +14,10 @@ exports.createTask = async (req, res) => {
         });
 
         console.log(`[DB SUCCESS] Task created for userId: ${req.user.id}`);
+
+        // 🔔 Notify user about new task
+        sendSmartNotification(req.user.id, "task_added").catch(() => {});
+
         res.json({ success: true, data: task });
 
     } catch (err) {
@@ -59,6 +64,8 @@ exports.updateTask = async (req, res) => {
         // 🔥 IMPORTANT LINE
         if (req.body.status === "completed") {
             await updateProgress(req.user.id);
+            // 🔔 Notify on task completion
+            sendSmartNotification(req.user.id, "task_completed").catch(() => {});
         }
 
         res.json({ success: true, data: updated });

@@ -6,11 +6,13 @@ import {
   CategoryScale, LinearScale, PointElement, LineElement,
   ArcElement, BarElement, Filler, Tooltip, Legend,
   RadialLinearScale,
+  defaults
 } from 'chart.js';
-import { FiTarget, FiTrendingUp, FiZap } from 'react-icons/fi';
+import { FiTarget, FiTrendingUp, FiZap, FiDownload, FiX, FiCalendar } from 'react-icons/fi';
 import { BiSmile, BiMoon } from 'react-icons/bi';
-
+import * as XLSX from 'xlsx';
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, ArcElement, BarElement, Filler, Tooltip, Legend, RadialLinearScale);
+defaults.font.family = "'Outfit', sans-serif";
 
 const MOOD_VALUES = { happy: 5, neutral: 4, sad: 2, stressed: 1, angry: 0 };
 const MOOD_COLORS = { happy: '#4ADE80', neutral: '#60A5FA', sad: '#F87171', stressed: '#FBBF24', angry: '#EF4444' };
@@ -21,6 +23,17 @@ export default function Dashboard() {
   const [sleepData, setSleepData] = useState([]);
   const [progress, setProgress] = useState(null);
   const [loading, setLoading] = useState(true);
+
+  // ── Report Modal State ──
+  const [showReportModal, setShowReportModal] = useState(false);
+  const [reportType, setReportType] = useState('month');
+  const [reportDate, setReportDate] = useState(() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+  });
+
+  // ── Heatmap Tooltip State ──
+  const [heatTooltip, setHeatTooltip] = useState(null);
 
   useEffect(() => { loadAll(); }, []);
 
@@ -506,117 +519,584 @@ export default function Dashboard() {
     return dayNum >= 1 && dayNum <= daysInMonth ? dayNum : null;
   });
 
+  // ── Monthly Heatmap Logic ──
+  const monthlyHeatmapData = useMemo(() => {
+    const days = [];
+    const t = new Date();
+    const year = t.getFullYear();
+    const month = t.getMonth();
+    
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const firstDay = new Date(year, month, 1).getDay();
+
+    for (let i = 0; i < firstDay; i++) {
+        days.push({ empty: true });
+    }
+
+    for (let i = 1; i <= daysInMonth; i++) {
+        const d = new Date(year, month, i);
+        days.push({
+            empty: false,
+            dateObj: d,
+            dateNum: i,
+            dateStr: d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }),
+            isoStr: new Date(d.getTime() - (d.getTimezoneOffset() * 60000)).toISOString().split('T')[0],
+            moodCounts: {},
+            tasksTotal: 0,
+            tasksCompleted: 0,
+            sleepH: null,
+            sleepQ: '-'
+        });
+    }
+
+    const map = {};
+    days.filter(d => !d.empty).forEach(d => map[d.isoStr] = d);
+
+    moods.forEach(m => {
+        const dObj = new Date(m.createdAt);
+        const dStr = new Date(dObj.getTime() - (dObj.getTimezoneOffset() * 60000)).toISOString().split('T')[0];
+        if (map[dStr]) {
+            const lowM = m.mood.toLowerCase();
+            map[dStr].moodCounts[lowM] = (map[dStr].moodCounts[lowM] || 0) + 1;
+        }
+    });
+
+    tasks.forEach(task => {
+        const dObj = new Date(task.updatedAt || task.createdAt);
+        const dStr = new Date(dObj.getTime() - (dObj.getTimezoneOffset() * 60000)).toISOString().split('T')[0];
+        if (map[dStr]) {
+            map[dStr].tasksTotal++;
+            if (task.status === 'completed') map[dStr].tasksCompleted++;
+        }
+    });
+
+    sleepData.forEach(s => {
+        const dObj = new Date(s.createdAt);
+        const dStr = new Date(dObj.getTime() - (dObj.getTimezoneOffset() * 60000)).toISOString().split('T')[0];
+        if (map[dStr] && s.sleepTime && s.wakeTime) {
+            let st = new Date(s.sleepTime);
+            let wt = new Date(s.wakeTime);
+            let dur = (wt - st) / (1000 * 60 * 60);
+            if (dur < 0) dur += 24;
+            map[dStr].sleepH = dur;
+            map[dStr].sleepQ = s.quality || 'average';
+        }
+    });
+
+    days.filter(d => !d.empty).forEach(d => {
+        let finalizedMood = '-';
+        if (Object.keys(d.moodCounts).length > 0) {
+             let highestCount = 0;
+             let topMoods = [];
+             Object.entries(d.moodCounts).forEach(([m, count]) => {
+                  if (count > highestCount) { highestCount = count; topMoods = [m]; } 
+                  else if (count === highestCount) topMoods.push(m);
+             });
+             topMoods.sort((a,b) => (MOOD_VALUES[b] || 0) - (MOOD_VALUES[a] || 0));
+             finalizedMood = topMoods[0];
+        }
+        d.overallMood = finalizedMood;
+        
+        let act = 0;
+        if (d.tasksCompleted >= 3) act = 3;
+        else if (d.tasksCompleted >= 1) act = 2;
+        else if (d.tasksTotal > 0 || finalizedMood !== '-' || d.sleepH !== null) act = 1;
+        else act = 0;
+        d.intensity = act;
+    });
+
+    return days;
+  }, [moods, tasks, sleepData]);
+
+  const getHeatEmoji = (m) => m === 'happy' ? '😊 ' : m === 'sad' ? '😢 ' : m === 'stressed' ? '😰 ' : m === 'angry' ? '😡 ' : m === 'neutral' ? '😌 ' : '';
+
+  // ── Report Logic ──
+  const reportRows = useMemo(() => {
+    if (!showReportModal) return [];
+    
+    const isMonth = reportType === 'month';
+    const parseLocalTime = () => {
+        if (!reportDate) return new Date();
+        const parts = reportDate.split('-');
+        if (parts.length === 2) {
+            return new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, 1);
+        } else {
+            return new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+        }
+    };
+    
+    const targetStart = parseLocalTime();
+    
+    let tStart = new Date(targetStart.getFullYear(), targetStart.getMonth(), isMonth ? 1 : targetStart.getDate());
+    let tEnd = new Date(targetStart.getFullYear(), targetStart.getMonth(), isMonth ? new Date(targetStart.getFullYear(), targetStart.getMonth()+1, 0).getDate() : targetStart.getDate(), 23, 59, 59);
+
+    const dailyMap = {};
+    
+    const addDay = (d) => {
+        const ds = new Date(d.getTime() - (d.getTimezoneOffset() * 60000)).toISOString().split('T')[0];
+        if (!dailyMap[ds]) {
+            dailyMap[ds] = { date: d, moods: [], tasksTotal: 0, tasksCompleted: 0, sleepH: null, sleepQ: '-' };
+        }
+        return ds;
+    };
+
+    moods.forEach(m => {
+        const d = new Date(m.createdAt);
+        if (d >= tStart && d <= tEnd) {
+            const ds = addDay(d);
+            dailyMap[ds].moods.push(m.mood);
+        }
+    });
+
+    tasks.forEach(t => {
+        const d = new Date(t.updatedAt || t.createdAt);
+        if (d >= tStart && d <= tEnd) {
+            const ds = addDay(d);
+            dailyMap[ds].tasksTotal++;
+            if (t.status === 'completed') {
+                dailyMap[ds].tasksCompleted++;
+            }
+        }
+    });
+
+    sleepData.forEach(s => {
+        const d = new Date(s.createdAt);
+        if (d >= tStart && d <= tEnd) {
+            const ds = addDay(d);
+            if (s.sleepTime && s.wakeTime) {
+                let st = new Date(s.sleepTime);
+                let wt = new Date(s.wakeTime);
+                let dur = (wt - st) / (1000 * 60 * 60);
+                if (dur < 0) dur += 24;
+                dailyMap[ds].sleepH = dur;
+                dailyMap[ds].sleepQ = s.quality || 'average';
+            }
+        }
+    });
+
+    const rows = [];
+    
+    Object.keys(dailyMap).sort((a,b) => b.localeCompare(a)).forEach(ds => {
+        const dData = dailyMap[ds];
+        const dObj = new Date(Math.max(dData.date.getTime(), new Date(ds).getTime()));
+        const dateStr = dObj.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+
+        const moodCounts = {};
+        dData.moods.forEach(m => {
+            const lowM = m.toLowerCase();
+            moodCounts[lowM] = (moodCounts[lowM] || 0) + 1;
+        });
+        
+        const getEmoji = (m) => m === 'happy' ? '😊' : m === 'sad' ? '😢' : m === 'stressed' ? '😰' : m === 'angry' ? '😡' : '😐';
+        const getColor = (m) => m === 'happy' ? '#10B981' : m === 'sad' ? '#60A5FA' : m === 'stressed' ? '#F59E0B' : m === 'angry' ? '#EF4444' : '#6B7280';
+
+        const moodSummaryText = Object.entries(moodCounts).map(([m, c]) => `${getEmoji(m)} ${m.charAt(0).toUpperCase() + m.slice(1)} x${c}`).join(', ');
+
+        const moodSummaryJSX = Object.entries(moodCounts).length === 0 ? <span style={{color: '#9CA3AF'}}>-</span> : Object.entries(moodCounts).map(([m, c], idx) => (
+             <span key={m} style={{ color: getColor(m), fontWeight: 600, marginRight: '8px' }}>
+                 {getEmoji(m)} {m.charAt(0).toUpperCase() + m.slice(1)} x{c}
+                 {idx < Object.entries(moodCounts).length - 1 ? ',' : ''}
+             </span>
+        ));
+
+        // Overall Day Mood
+        let avgMoodStr = '-';
+        let avgJSX = <span style={{color: '#9CA3AF'}}>-</span>;
+        
+        if (Object.keys(moodCounts).length > 0) {
+             let highestCount = 0;
+             let topMoods = [];
+             
+             Object.entries(moodCounts).forEach(([m, count]) => {
+                  if (count > highestCount) {
+                      highestCount = count;
+                      topMoods = [m];
+                  } else if (count === highestCount) {
+                      topMoods.push(m);
+                  }
+             });
+             
+             // If there's a tie, pick the one with better value
+             topMoods.sort((a,b) => (MOOD_VALUES[b] || 0) - (MOOD_VALUES[a] || 0));
+             
+             const finalizedMood = topMoods[0];
+             const displayMoodName = finalizedMood.charAt(0).toUpperCase() + finalizedMood.slice(1);
+             
+             avgMoodStr = displayMoodName;
+             avgJSX = <span style={{ color: getColor(finalizedMood), fontWeight: 700 }}>{getEmoji(finalizedMood)} {displayMoodName}</span>;
+        }
+
+        let taskStr = '-';
+        if (dData.tasksTotal > 0) {
+            const perc = Math.round((dData.tasksCompleted / dData.tasksTotal) * 100);
+            taskStr = `${perc}% (${dData.tasksCompleted}/${dData.tasksTotal})`;
+        }
+        
+        const taskJSX = dData.tasksTotal > 0 
+           ? <span><strong style={{color: '#1F2937'}}>{Math.round((dData.tasksCompleted / dData.tasksTotal) * 100)}%</strong> <span style={{color: '#9CA3AF', fontSize: '0.85rem'}}>({dData.tasksCompleted}/{dData.tasksTotal})</span></span>
+           : <span style={{color: '#9CA3AF'}}>-</span>;
+
+        let sleepStr = dData.sleepH !== null ? dData.sleepH.toFixed(1) + 'h' : '-';
+        let sleepQ = dData.sleepQ !== '-' ? dData.sleepQ : '-';
+
+        rows.push({
+            date: dateStr,
+            moodSummaryJSX,
+            moodSummaryText,
+            avgJSX,
+            avgMoodStr,
+            taskJSX,
+            taskStr,
+            sleepStr,
+            sleepQ
+        });
+    });
+
+    return rows;
+  }, [showReportModal, reportType, reportDate, moods, tasks, sleepData]);
+
+  const downloadExcel = () => {
+    if (reportRows.length === 0) return;
+    const wsPattern = reportRows.map(r => ({
+        'Date': r.date,
+        'Mood Summary': r.moodSummaryText,
+        'Overall Day Mood': r.avgMoodStr,
+        'Tasks Done': r.taskStr,
+        'Sleep Hours': r.sleepStr,
+        'Quality': r.sleepQ
+    }));
+
+    const ws = XLSX.utils.json_to_sheet(wsPattern);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Activity Report");
+    XLSX.writeFile(wb, `NeuroNexus_Report_${reportDate}.xlsx`);
+  };
+
   if (loading) return <div className="loading-spinner" style={{ marginTop: '40px' }}></div>;
 
   return (
-    <div style={{ paddingBottom: '90px' }}>
-      <div className="gradient-header" style={{ marginBottom: '20px', paddingBottom: '28px', borderBottomLeftRadius: '24px', borderBottomRightRadius: '24px' }}>
-        <h1 style={{ fontSize: '1.6rem', marginBottom: '4px' }}>Your Dashboard</h1>
-        <p style={{ opacity: 0.9, fontSize: '0.9rem' }}>Track your progress &amp; insights 📊</p>
+    <div style={{ paddingBottom: '90px', maxWidth: '1200px', margin: '0 auto' }}>
+      <div className="vibrant-header">
+        <h1>Your Dashboard</h1>
+        <p>Track your progress &amp; insights 📊</p>
       </div>
 
       {/* ── Stats Grid ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', padding: '0 16px', marginBottom: '20px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '16px', padding: '0 16px', marginBottom: '24px' }}>
         {[
-          { label: 'Completion', value: `${stats.rate}%`, icon: <FiTarget size={14} />, color: '#10B981', bg: 'linear-gradient(135deg,#D1FAE5,#A7F3D0)' },
-          { label: 'Streak', value: `${progress?.streak || 0} 🔥`, icon: '🔥', color: '#F97316', bg: 'linear-gradient(135deg,#FEF3C7,#FDE68A)' },
-          { label: 'Dopamine', value: `${dopamine}%`, icon: <FiZap size={14} />, color: '#8B5CF6', bg: 'linear-gradient(135deg,#EDE9FE,#DDD6FE)' },
-          { label: 'Tasks', value: `${stats.completed}/${stats.total}`, icon: <FiTrendingUp size={14} />, color: '#3B82F6', bg: 'linear-gradient(135deg,#DBEAFE,#BFDBFE)' },
+          { label: 'Completion', value: `${stats.rate}%`, icon: <FiTarget size={16} />, color: '#10B981' },
+          { label: 'Streak', value: `${progress?.streak || 0} 🔥`, icon: '🔥', color: '#F97316' },
+          { label: 'Dopamine', value: `${dopamine}%`, icon: <FiZap size={16} />, color: '#8B5CF6' },
+          { label: 'Tasks', value: `${stats.completed}/${stats.total}`, icon: <FiTrendingUp size={16} />, color: '#3B82F6' },
         ].map(stat => (
-          <div key={stat.label} style={{ background: stat.bg, borderRadius: '18px', padding: '18px', boxShadow: '0 2px 10px rgba(0,0,0,0.06)' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: stat.color, fontSize: '0.78rem', fontWeight: 700, marginBottom: '8px' }}>
+          <div key={stat.label} className="glass-card">
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: stat.color, fontSize: '0.85rem', fontWeight: 700 }}>
               {stat.icon} {stat.label}
             </div>
-            <div style={{ fontSize: '1.6rem', fontWeight: 800, color: '#1F2937' }}>{stat.value}</div>
+            <div style={{ fontSize: '1.8rem', fontWeight: 800, color: 'var(--text-primary)' }}>{stat.value}</div>
           </div>
         ))}
       </div>
 
-
-      {/* ── Dopamine Simulation ── */}
-      <div className="card" style={{ margin: '0 16px 20px', padding: '20px' }}>
-        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '14px' }}>
-          <div>
-            <h3 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '3px' }}>🧠 Dopamine Simulation</h3>
-            <p style={{ fontSize: '0.75rem', color: '#292929ff', opacity: 0.8 }}>Today's estimated emotional energy flow</p>
+      {/* ── Dopamine Simulation (Top Priority) ── */}
+      <div className="card" style={{ margin: '0 16px 24px', padding: '24px' }}>
+          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '16px' }}>
+              <div>
+                  <h3 style={{ fontSize: '1.2rem', fontWeight: 800, marginBottom: '4px' }}>🧠 Dopamine Simulation</h3>
+                  <p style={{ fontSize: '0.85rem', color: 'var(--text-tertiary)' }}>Today's estimated emotional energy flow</p>
+              </div>
+              <div style={{ background: '#06c585', borderRadius: '16px', padding: '10px 20px', textAlign: 'center', minWidth: '70px', boxShadow: '0 8px 24px rgba(6,197,133,0.3)' }}>
+                  <div style={{ color: 'white', fontWeight: 800, fontSize: '1.4rem' }}>
+                      {dopamineSimData.length > 0 ? dopamineSimData[dopamineSimData.length - 1].value : 50}
+                  </div>
+                  <div style={{ color: 'rgba(255,255,255,0.9)', fontSize: '0.7rem', marginTop: '2px', fontWeight: 600 }}>NOW</div>
+              </div>
           </div>
-          <div style={{ background: 'linear-gradient(135deg, #016443, #06c585)', borderRadius: '14px', padding: '8px 16px', textAlign: 'center', minWidth: '64px', boxShadow: '0 4px 14px rgba(1, 100, 67, 0.35)' }}>
-            <div style={{ color: 'white', fontWeight: 800, fontSize: '1.3rem' }}>
-              {dopamineSimData.length > 0 ? dopamineSimData[dopamineSimData.length - 1].value : 50}
-            </div>
-            <div style={{ color: 'rgba(255,255,255,0.78)', fontSize: '0.65rem', marginTop: '1px' }}>NOW</div>
+
+          {dopamineSimData.length < 2 ? (
+              <div style={{ height: '220px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: '#06c585', gap: '10px' }}>
+                  <span style={{ fontSize: '2.5rem' }}>🧠</span>
+                  <p style={{ fontSize: '0.9rem', fontWeight: 600 }}>Log moods &amp; complete tasks to see your dopamine curve!</p>
+              </div>
+          ) : (
+              <div style={{ height: '240px' }}>
+                  <Line data={dopamineChartData} options={dopamineOpts} plugins={[dopamineGradPlugin]} />
+              </div>
+          )}
+
+          <div style={{ display: 'flex', gap: '14px', flexWrap: 'wrap', marginTop: '18px', paddingTop: '14px', borderTop: '1px solid var(--border)' }}>
+              {[
+                  { color: '#10B981', label: 'Happy Spike' },
+                  { color: '#60A5FA', label: 'Sad Drop' },
+                  { color: '#8B5CF6', label: 'Task Done' },
+                  { color: '#FBBF24', label: 'Stress' },
+                  { color: '#EF4444', label: 'Crash' },
+              ].map(e => (
+                  <div key={e.label} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: e.color, flexShrink: 0, boxShadow: `0 0 8px ${e.color}` }} />
+                      <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-secondary)' }}>{e.label}</span>
+                  </div>
+              ))}
+          </div>
+      </div>
+
+      {/* ── Charts Grid Rows ── */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', padding: '0 16px' }}>
+
+        {/* ── Row 1: Mood Trend & Task Completion ── */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '24px' }}>
+          {/* ── Mood Trend ── */}
+        <div className="card" style={{ margin: 0, padding: '24px' }}>
+          <h3 style={{ fontSize: '1.1rem', fontWeight: 800, marginBottom: '6px' }}>Mood Trends</h3>
+          <p style={{ fontSize: '0.8rem', color: 'var(--text-tertiary)', marginBottom: '16px' }}>Total mood inputs per day</p>
+          <div style={{ height: '200px' }}><Line data={moodChartData} options={moodLineOpts} /></div>
+        </div>
+
+        {/* ── Task Bar ── */}
+        <div className="card" style={{ margin: 0, padding: '24px' }}>
+          <h3 style={{ fontSize: '1.1rem', fontWeight: 800, marginBottom: '16px' }}>Task Completion</h3>
+          <div style={{ height: '210px' }}><Bar data={taskBarChartData} options={taskBarOpts} /></div>
+        </div>
+        </div>
+
+        {/* ── Row 2: Mood Radar & Sleep Pattern ── */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '24px' }}>
+        {/* ── Mood Web Radar Chart ── */}
+        <div className="card" style={{ margin: 0, padding: '24px' }}>
+          <h3 style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '1.1rem', fontWeight: 800, marginBottom: '16px' }}>
+            🕸️ Mood Radar
+          </h3>
+          <div style={{ height: '220px', display: 'flex', justifyContent: 'center' }}>
+            <Radar
+              data={radarChartData}
+              options={{
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: { r: { beginAtZero: true, ticks: { stepSize: 1, color: 'transparent', backdropColor: 'transparent' }, grid: { color: 'var(--border)' }, pointLabels: { font: { size: 12, weight: '700', family: "'Outfit', sans-serif" }, color: 'var(--text-secondary)' } } },
+              }}
+            />
           </div>
         </div>
 
-        {dopamineSimData.length < 2 ? (
-          <div style={{ height: '200px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: '#06c585', gap: '8px' }}>
-            <span style={{ fontSize: '2rem' }}>🧠</span>
-            <p style={{ fontSize: '0.85rem', fontWeight: 600 }}>Log moods &amp; complete tasks to see your dopamine curve!</p>
-          </div>
-        ) : (
-          <div style={{ height: '200px' }}>
-            <Line data={dopamineChartData} options={dopamineOpts} plugins={[dopamineGradPlugin]} />
-          </div>
-        )}
-
-        {/* Event Legend */}
-        <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', marginTop: '14px', paddingTop: '10px', borderTop: '1px solid var(--border)' }}>
-          {[
-            { color: '#10B981', label: 'Happy → Spike' },
-            { color: '#34D399', label: '↘ Fading' },
-            { color: '#60A5FA', label: 'Sad → Drop' },
-            { color: '#93C5FD', label: '↗ Recovering' },
-            { color: '#FBBF24', label: 'Stressed' },
-            { color: '#EF4444', label: 'Angry → Crash' },
-            { color: '#8B5CF6', label: 'Task Done' },
-          ].map(e => (
-            <div key={e.label} style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-              <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: e.color, flexShrink: 0 }} />
-              <span style={{ fontSize: '0.70rem', color: 'var(--text-tertiary)' }}>{e.label}</span>
-            </div>
-          ))}
+        {/* ── Sleep ── */}
+        <div className="card" style={{ margin: 0, padding: '24px' }}>
+          <h3 style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '1.1rem', fontWeight: 800, marginBottom: '16px' }}>
+            <BiMoon size={20} color="#6D28D9" /> Sleep Pattern
+          </h3>
+          <div style={{ height: '200px' }}><Bar data={sleepChartData} options={barOpts} /></div>
         </div>
+
+      </div>
       </div>
 
-      {/* ── Mood Web Radar Chart ── */}
-      <div className="card" style={{ margin: '0 16px 20px', padding: '20px' }}>
-        <h3 style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '1rem', fontWeight: 700, marginBottom: '16px' }}>
-          🕸️ Mood Radar
-        </h3>
-        <div style={{ height: '220px', display: 'flex', justifyContent: 'center' }}>
-          <Radar
-            data={radarChartData}
-            options={{
-              responsive: true,
-              maintainAspectRatio: false,
-              plugins: { legend: { display: false } },
-              scales: { r: { beginAtZero: true, ticks: { stepSize: 1, color: '#9CA3AF', font: { size: 10 } }, grid: { color: '#F3F4F6' }, pointLabels: { font: { size: 11, weight: '700' }, color: '#374151' } } },
-            }}
-          />
+      {/* ── Extractor / Report Section ── */}
+      <div className="card" style={{ margin: '32px 16px 80px', padding: '24px', display: 'flex', flexWrap: 'wrap', gap: '32px', alignItems: 'stretch', background: 'var(--bg-card)' }}>
+          {/* Calendar Heatmap (Left) */}
+          <div style={{ flex: '1 1 350px' }}>
+              <h3 style={{ fontSize: '1.25rem', fontWeight: 800, marginBottom: '4px', color: '#1F2937' }}>🗓️ Monthly Activity Heatmap</h3>
+              <p style={{ fontSize: '0.85rem', color: 'var(--text-tertiary)', marginBottom: '16px' }}>{new Date().toLocaleString('default', { month: 'long', year: 'numeric' })} logs visually displayed. Hover to preview.</p>
+              
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '6px' }}>
+                  {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map(day => (
+                      <div key={day} style={{ textAlign: 'center', fontSize: '0.8rem', fontWeight: 700, color: '#6B7280', paddingBottom: '4px' }}>{day}</div>
+                  ))}
+                  {monthlyHeatmapData.map((d, i) => {
+                      if (d.empty) return <div key={`empty-${i}`} />;
+                      const colors = { 0: '#F3F4F6', 1: '#A7F3D0', 2: '#34D399', 3: '#10B981' };
+                      const textColors = { 0: '#9CA3AF', 1: '#064E3B', 2: '#064E3B', 3: 'white' };
+                      return (
+                          <div 
+                              key={`day-${i}`} 
+                              style={{
+                                  aspectRatio: '1', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                  background: colors[d.intensity], color: textColors[d.intensity], 
+                                  borderRadius: '10px', cursor: 'pointer', transition: 'transform 0.1s, box-shadow 0.2s',
+                                  fontSize: '0.95rem', fontWeight: 800
+                              }}
+                              onMouseOver={(e) => { 
+                                  e.currentTarget.style.transform = 'scale(1.15)'; 
+                                  e.currentTarget.style.boxShadow = '0 6px 16px rgba(0,0,0,0.1)';
+                                  const rect = e.currentTarget.getBoundingClientRect();
+                                  setHeatTooltip({ x: rect.left + window.scrollX + (rect.width/2), y: rect.top + window.scrollY, data: d });
+                              }}
+                              onMouseOut={(e) => { 
+                                  e.currentTarget.style.transform = 'scale(1)'; 
+                                  e.currentTarget.style.boxShadow = 'none';
+                                  setHeatTooltip(null);
+                              }}
+                          >
+                              {d.dateNum}
+                          </div>
+                      );
+                  })}
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.75rem', fontWeight: 600, color: '#9CA3AF', marginTop: '16px', justifyContent: 'center' }}>
+                  <span>Low</span>
+                  {['#F3F4F6', '#A7F3D0', '#34D399', '#10B981'].map(c => (
+                      <div key={c} style={{ width: '12px', height: '12px', background: c, borderRadius: '4px' }} />
+                  ))}
+                  <span>High Activity</span>
+              </div>
+          </div>
+
+          {/* Download Button (Right) */}
+          <div style={{ flex: '1 1 250px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '16px', padding: '32px 24px', background: '#F0FDF4', borderRadius: '20px', border: '2px dashed #A7F3D0' }}>
+              <div style={{ textAlign: 'center' }}>
+                  <h4 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 800, color: '#064E3B' }}>Extract Data</h4>
+                  <p style={{ margin: '6px 0 0', fontSize: '0.9rem', color: '#059669', maxWidth: '200px' }}>Download your timeline history into a clean Excel spreadsheet.</p>
+              </div>
+              <button 
+                  onClick={() => setShowReportModal(true)} 
+                  style={{ background: '#06c585', color: 'white', border: 'none', borderRadius: '14px', padding: '16px 32px', fontSize: '1.05rem', fontWeight: 800, cursor: 'pointer', boxShadow: '0 8px 24px rgba(6,197,133,0.3)', display: 'flex', alignItems: 'center', gap: '8px', transition: 'all 0.3s' }}
+                  onMouseOver={(e) => e.currentTarget.style.transform = 'translateY(-2px)'} 
+                  onMouseOut={(e) => e.currentTarget.style.transform = 'translateY(0)'}
+              >
+                  📊 Monthly Report
+              </button>
+          </div>
+      </div>
+
+      {/* ── Report Generation Modal ── */}
+      {showReportModal && (
+        <div style={{
+           position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+           background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(6px)', zIndex: 1000,
+           display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px'
+        }}>
+           <div style={{ background: '#F0FDF4', borderRadius: '16px', maxWidth: '850px', width: '100%', overflow: 'hidden', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)' }}>
+               {/* ── Top Bar ── */}
+               <div style={{ background: 'white', padding: '24px 32px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+                      <h2 style={{ fontSize: '1.25rem', fontWeight: 800, margin: 0, color: '#1F2937', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                         📊 Activity Report
+                      </h2>
+                      <FiX size={20} style={{ cursor: 'pointer', color: '#6B7280' }} onClick={() => setShowReportModal(false)} />
+                  </div>
+
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', flexWrap: 'wrap', gap: '16px' }}>
+                      <div style={{ display: 'flex', gap: '24px' }}>
+                          <div>
+                             <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: '#374151', marginBottom: '8px' }}>Type</label>
+                             <select 
+                                 value={reportType} 
+                                 onChange={(e) => { 
+                                    setReportType(e.target.value); 
+                                    setReportDate(e.target.value === 'month' ? new Date().getFullYear() + '-' + String(new Date().getMonth()+1).padStart(2,'0') : new Date().toISOString().split('T')[0]); 
+                                 }}
+                                 style={{ padding: '8px 12px', borderRadius: '8px', border: '1px solid #D1D5DB', outline: 'none', background: 'white', fontSize: '0.9rem', minWidth: '120px', cursor: 'pointer', fontFamily: "'Outfit', sans-serif" }}
+                             >
+                                 <option value="month">Monthly</option>
+                                 <option value="date">Daily</option>
+                             </select>
+                          </div>
+                          <div>
+                             <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: '#374151', marginBottom: '8px' }}>Month</label>
+                             <input 
+                                 type={reportType} 
+                                 value={reportDate}
+                                 onChange={e => setReportDate(e.target.value)}
+                                 style={{ padding: '8px 12px', borderRadius: '8px', border: '1px solid #D1D5DB', background: 'white', outline: 'none', fontSize: '0.9rem', color: '#1F2937', minWidth: '160px', fontFamily: "'Outfit', sans-serif" }}
+                             />
+                          </div>
+                      </div>
+                      
+                      <button 
+                          onClick={downloadExcel}
+                          disabled={reportRows.length === 0}
+                          style={{
+                              background: '#10B981', color: 'white', border: 'none', borderRadius: '8px', padding: '10px 20px', fontSize: '0.9rem', fontWeight: 700, cursor: reportRows.length === 0 ? 'not-allowed' : 'pointer', transition: 'background 0.2s', opacity: reportRows.length === 0 ? 0.6 : 1, fontFamily: "'Outfit', sans-serif"
+                          }}
+                      >
+                          Download Excel Report
+                      </button>
+                  </div>
+               </div>
+               
+               {/* ── Table Header (White) ── */}
+               <div style={{ background: 'white', padding: '0 32px' }}>
+                   <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                       <thead>
+                           <tr>
+                              <th style={{ padding: '16px 0', fontSize: '0.85rem', fontWeight: 800, color: '#1F2937', width: '15%' }}>Date</th>
+                              <th style={{ padding: '16px 0', fontSize: '0.85rem', fontWeight: 800, color: '#1F2937', width: '30%' }}>Mood Summary</th>
+                              <th style={{ padding: '16px 0', fontSize: '0.85rem', fontWeight: 800, color: '#1F2937', width: '20%' }}>Overall Day Mood</th>
+                              <th style={{ padding: '16px 0', fontSize: '0.85rem', fontWeight: 800, color: '#1F2937', width: '15%' }}>Tasks Done</th>
+                              <th style={{ padding: '16px 0', fontSize: '0.85rem', fontWeight: 800, color: '#1F2937', width: '10%' }}>Sleep</th>
+                              <th style={{ padding: '16px 0', fontSize: '0.85rem', fontWeight: 800, color: '#1F2937', width: '10%' }}>Quality</th>
+                           </tr>
+                       </thead>
+                   </table>
+               </div>
+
+               {/* ── Table Body (Light Green) ── */}
+               <div style={{ padding: '0 32px 32px 32px', overflowY: 'auto', maxHeight: '50vh' }}>
+                   <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                       <tbody>
+                           {reportRows.length === 0 ? (
+                               <tr><td colSpan="6" style={{ padding: '40px 0', textAlign: 'center', color: '#6B7280' }}>No activity logged for this period.</td></tr>
+                           ) : (
+                               reportRows.map((r, i) => (
+                                   <tr key={i} style={{ borderBottom: '1px solid rgba(0,0,0,0.05)' }}>
+                                       <td style={{ padding: '16px 0', fontSize: '0.9rem', color: '#4B5563', width: '15%' }}>{r.date}</td>
+                                       <td style={{ padding: '16px 0', fontSize: '0.9rem', width: '30%' }}>{r.moodSummaryJSX}</td>
+                                       <td style={{ padding: '16px 0', fontSize: '0.9rem', width: '20%' }}>{r.avgJSX}</td>
+                                       <td style={{ padding: '16px 0', fontSize: '0.9rem', width: '15%' }}>{r.taskJSX}</td>
+                                       <td style={{ padding: '16px 0', fontSize: '0.9rem', color: '#4B5563', width: '10%' }}>{r.sleepStr}</td>
+                                       <td style={{ padding: '16px 0', fontSize: '0.9rem', color: '#4B5563', width: '10%', textTransform: 'capitalize' }}>{r.sleepQ}</td>
+                                   </tr>
+                               ))
+                           )}
+                       </tbody>
+                   </table>
+               </div>
+           </div>
         </div>
-      </div>
+      )}
 
-      {/* ── Mood Trend ── */}
-      <div className="card" style={{ margin: '0 16px 20px', padding: '20px' }}>
-        <h3 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '4px' }}>Mood Trends</h3>
-        <p style={{ fontSize: '0.78rem', color: '#9CA3AF', marginBottom: '14px' }}>Total mood inputs per day</p>
-        <div style={{ height: '180px' }}><Line data={moodChartData} options={moodLineOpts} /></div>
-      </div>
-
-      {/* ── Sleep ── */}
-      <div className="card" style={{ margin: '0 16px 20px', padding: '20px' }}>
-        <h3 style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '1rem', fontWeight: 700, marginBottom: '16px' }}>
-          <BiMoon size={18} color="#6D28D9" /> Sleep Pattern
-        </h3>
-        <div style={{ height: '180px' }}><Bar data={sleepChartData} options={barOpts} /></div>
-      </div>
-
-      {/* ── Task Bar ── */}
-      <div className="card" style={{ margin: '0 16px 20px', padding: '20px' }}>
-        <h3 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '16px' }}>Task Completion</h3>
-        <div style={{ height: '180px' }}><Bar data={taskBarChartData} options={taskBarOpts} /></div>
-      </div>
-
+      {/* ── Custom Heatmap Tooltip ── */}
+      {heatTooltip && (
+          <div style={{
+               position: 'fixed',
+               top: heatTooltip.y - 120, // offset above cursor
+               left: heatTooltip.x - 90, // center above cursor
+               width: '180px',
+               background: '#1F2937', color: 'white',
+               padding: '14px', borderRadius: '12px',
+               boxShadow: '0 12px 24px rgba(0,0,0,0.3)',
+               zIndex: 9999, pointerEvents: 'none',
+               animation: 'fadeIn 0.2s ease-out',
+               fontFamily: "'Outfit', sans-serif"
+          }}>
+               <strong style={{ display: 'block', color: '#F9FAFB', fontSize: '1rem', marginBottom: '8px', paddingBottom: '8px', borderBottom: '1px solid #4B5563' }}>
+                   {heatTooltip.data.dateStr}
+               </strong>
+               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px', fontSize: '0.9rem' }}>
+                   <span style={{ color: '#9CA3AF' }}>Mood</span>
+                   <span style={{ fontWeight: 700 }}>
+                       {heatTooltip.data.overallMood !== '-' ? getHeatEmoji(heatTooltip.data.overallMood) : '-'}
+                   </span>
+               </div>
+               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px', fontSize: '0.9rem' }}>
+                   <span style={{ color: '#9CA3AF' }}>Tasks</span>
+                   <span style={{ fontWeight: 700 }}>
+                       {heatTooltip.data.tasksCompleted}/{heatTooltip.data.tasksTotal}
+                   </span>
+               </div>
+               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.9rem' }}>
+                   <span style={{ color: '#9CA3AF' }}>Sleep</span>
+                   <span style={{ fontWeight: 700 }}>
+                       {heatTooltip.data.sleepH !== null ? heatTooltip.data.sleepH.toFixed(1) + 'h' : '-'}
+                   </span>
+               </div>
+               
+               {/* Tooltip Chevron */}
+               <div style={{ 
+                   position: 'absolute', bottom: '-6px', left: '50%', transform: 'translateX(-50%)', 
+                   borderWidth: '6px 6px 0 6px', borderStyle: 'solid', borderColor: '#1F2937 transparent transparent transparent' 
+               }} />
+          </div>
+      )}
 
     </div>
   );

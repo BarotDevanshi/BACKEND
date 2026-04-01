@@ -1,37 +1,8 @@
-import { useState, useEffect } from 'react';
-import { getRecommendation } from '../services/api';
 import { HiSparkles } from 'react-icons/hi';
 import { FiRefreshCw } from 'react-icons/fi';
 
-export default function RecommendationCard() {
-  const [suggestion, setSuggestion] = useState('');
-  const [loading, setLoading] = useState(false);
-
+export default function RecommendationCard({ suggestion, loading, fetchSuggestion }) {
   const defaultMessage = 'Welcome! 😊 Please add your mood, a task, and your sleep first so I can give you personalized suggestions!';
-
-  const fetchSuggestion = async () => {
-    setLoading(true);
-    try {
-      const res = await getRecommendation();
-      if (res.data.suggestion) {
-        setSuggestion(res.data.suggestion);
-      } else {
-        setSuggestion(defaultMessage);
-      }
-    } catch {
-      setSuggestion(defaultMessage);
-    }
-    setLoading(false);
-  };
-
-  useEffect(() => {
-    fetchSuggestion();
-
-    // Listen for data updates to fetch suggestion in real time
-    const handleUpdate = () => fetchSuggestion();
-    window.addEventListener('dashboardDataChanged', handleUpdate);
-    return () => window.removeEventListener('dashboardDataChanged', handleUpdate);
-  }, []);
 
   return (
     <div style={{ padding: '0 16px', marginBottom: '30px', display: 'flex', justifyContent: 'center' }}>
@@ -155,14 +126,17 @@ export default function RecommendationCard() {
               <span>Crafting your personalized insight...</span>
             </div>
           ) : (
-            <div style={{ 
-              display: 'flex', 
-              gap: '10px', 
-              letterSpacing: '0.2px', 
-              whiteSpace: 'pre-line',
-              width: '100%'
-            }}>
-              {suggestion}
+            <div style={{ width: '100%' }}>
+              <div style={{ 
+                display: 'flex', 
+                gap: '10px', 
+                letterSpacing: '0.2px', 
+                whiteSpace: 'pre-line',
+                width: '100%',
+                marginBottom: '0'
+              }}>
+                {suggestion || defaultMessage}
+              </div>
             </div>
           )}
         </div>

@@ -1,8 +1,8 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 import { loginUser, registerUser } from '../services/api';
+import { subscribeUser } from '../utils/pushNotification';
 
 const AuthContext = createContext();
-
 export const useAuth = () => useContext(AuthContext);
 
 export function AuthProvider({ children }) {
@@ -14,7 +14,7 @@ export function AuthProvider({ children }) {
     try {
       const base64Url = t.split('.')[1];
       const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-      const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
+      const jsonPayload = decodeURIComponent(atob(base64).split('').map(function (c) {
         return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
       }).join(''));
       return JSON.parse(jsonPayload);
@@ -28,9 +28,22 @@ export function AuthProvider({ children }) {
     if (token) {
       const payload = safeDecodeJWT(token);
       if (payload) {
-        setUser({ id: payload.id, name: payload.name, email: payload.email });
+        const userObj = { _id: payload.id, name: payload.name, email: payload.email };
+        setUser(userObj);
         if (payload.name) {
           localStorage.setItem('nn-displayName', payload.name);
+        }
+
+        // 🔔 AUTO-SUBSCRIBE: Silently request push permission & register subscription
+        // Only run once per user session (tracked via localStorage flag)
+        const alreadySubscribed = localStorage.getItem(`push_subscribed_${payload.id}`);
+        if (!alreadySubscribed) {
+          subscribeUser(payload.id).then((success) => {
+            if (success) {
+              localStorage.setItem(`push_subscribed_${payload.id}`, 'true');
+              console.log('[AUTH] 🔔 Push subscription registered automatically.');
+            }
+          }).catch(() => {});
         }
       } else {
         logout();
@@ -80,6 +93,8 @@ export function AuthProvider({ children }) {
   const logout = () => {
     localStorage.removeItem('neuro_token');
     localStorage.removeItem('nn-displayName');
+    // Clear push subscription flag so it re-subscribes on next login
+    if (user?._id) localStorage.removeItem(`push_subscribed_${user._id}`);
     setToken(null);
     setUser(null);
   };
