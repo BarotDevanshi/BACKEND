@@ -1,11 +1,28 @@
 const express = require("express");
 const dotenv = require("dotenv");
+dotenv.config(); // ✅ Load env FIRST before anything else
 const cors = require("cors");
 const mongoose = require("mongoose");
 const cron = require("node-cron");
+const https = require("https");
+const http = require("http");
 const Task = require("./Model/Task");
 const webpush = require("web-push");
 
+// 🔔 KEEP-ALIVE: Ping self every 14 min to prevent Render free tier cold start
+const RENDER_URL = process.env.RENDER_EXTERNAL_URL || "";
+if (RENDER_URL) {
+  setInterval(() => {
+    const pingUrl = `${RENDER_URL}/api/health`;
+    const lib = pingUrl.startsWith("https") ? https : http;
+    lib.get(pingUrl, (res) => {
+      console.log(`[KEEP-ALIVE] Ping sent → Status: ${res.statusCode}`);
+    }).on("error", (err) => {
+      console.log(`[KEEP-ALIVE] Ping failed: ${err.message}`);
+    });
+  }, 14 * 60 * 1000); // every 14 minutes
+  console.log(`[KEEP-ALIVE] Self-ping enabled → ${RENDER_URL}/api/health`);
+}
 
 // Scheduled job at 12:00 AM - delete completed tasks
 cron.schedule("0 0 * * *", async () => {
@@ -28,8 +45,7 @@ cron.schedule("0 8 * * *", async () => {
   }
 });
 
-// Load environment variables
-dotenv.config();
+// dotenv already loaded at top ✅
 
 // ✅ Configure web-push VAPID keys
 webpush.setVapidDetails(
